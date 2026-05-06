@@ -35,6 +35,9 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Create dummy .env file
+        run: echo "GROQ_API=" > .env
+
       - name: Run analysis
         run: flutter analyze
 
