@@ -30,8 +30,6 @@ class ForegroundMonitorService : Service() {
         "com.snapchat.android"
     )
 
-    // Track which apps have already been roasted today to avoid spam
-    private val roastedApps = mutableSetOf<String>()
     private var lastResetDay = -1
 
     private val pollRunnable = object : Runnable {
@@ -69,9 +67,8 @@ class ForegroundMonitorService : Service() {
     private fun resetIfNewDay() {
         val today = java.util.Calendar.getInstance().get(java.util.Calendar.DAY_OF_YEAR)
         if (today != lastResetDay) {
-            roastedApps.clear()
             lastResetDay = today
-            Log.d(TAG, "New day — reset roasted apps")
+            Log.d(TAG, "New day — reset tracking")
         }
     }
 
@@ -83,12 +80,6 @@ class ForegroundMonitorService : Service() {
             return
         }
 
-        // Already roasted this app today
-        if (currentApp in roastedApps) {
-            return
-        }
-
-        // Query actual usage time from Android's UsageStatsManager
         val totalMs = getAppUsageToday(currentApp)
         val thresholdMs = getThresholdMs()
 
@@ -97,7 +88,6 @@ class ForegroundMonitorService : Service() {
         if (totalMs >= thresholdMs) {
             Log.d(TAG, "THRESHOLD EXCEEDED for $currentApp — triggering roast!")
             triggerRoast(currentApp, totalMs)
-            roastedApps.add(currentApp)
         }
     }
 

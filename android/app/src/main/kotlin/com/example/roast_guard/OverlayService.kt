@@ -15,6 +15,9 @@ class OverlayService : Service() {
     private var overlayView: View? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (overlayView != null) {
+            return START_NOT_STICKY
+        }
         val packageName = intent?.getStringExtra("package_name") ?: return START_NOT_STICKY
         val totalMs = intent.getLongExtra("total_ms", 0L)
 
