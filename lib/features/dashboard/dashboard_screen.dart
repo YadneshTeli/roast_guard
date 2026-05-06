@@ -3,14 +3,29 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/usage_provider.dart';
 import '../../core/constants/app_packages.dart';
 import '../../core/services/roast_engine.dart';
+import '../../core/services/usage_service.dart';
 import 'widgets/app_usage_card.dart';
 import 'widgets/roast_intensity_slider.dart';
 
-class DashboardScreen extends ConsumerWidget {
+class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+  final _usageService = UsageService();
+
+  @override
+  void initState() {
+    super.initState();
+    // Always ensure the monitoring service is running
+    _usageService.startMonitorService();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final usageAsync = ref.watch(usageStatsProvider);
 
     return Scaffold(

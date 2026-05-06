@@ -179,6 +179,23 @@ class ForegroundMonitorService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        // Re-schedule the service to restart if the app task is removed
+        val restartIntent = Intent(applicationContext, ForegroundMonitorService::class.java)
+        val pendingIntent = android.app.PendingIntent.getService(
+            applicationContext, 1, restartIntent,
+            android.app.PendingIntent.FLAG_ONE_SHOT or android.app.PendingIntent.FLAG_IMMUTABLE
+        )
+        val alarmManager = getSystemService(Context.ALARM_SERVICE) as android.app.AlarmManager
+        alarmManager.set(
+            android.app.AlarmManager.ELAPSED_REALTIME_WAKEUP,
+            android.os.SystemClock.elapsedRealtime() + 1000,
+            pendingIntent
+        )
+        Log.d(TAG, "Task removed — scheduled service restart")
+        super.onTaskRemoved(rootIntent)
+    }
+
     override fun onDestroy() {
         handler.removeCallbacks(pollRunnable)
         Log.d(TAG, "Monitor service destroyed")

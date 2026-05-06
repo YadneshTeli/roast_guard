@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/services/usage_service.dart';
 
 class PermissionScreen extends ConsumerStatefulWidget {
@@ -126,6 +127,12 @@ class _PermissionScreenState extends ConsumerState<PermissionScreen>
                       onPressed: (_hasUsage && _hasOverlay)
                           ? () async {
                               await _usageService.startMonitorService();
+                              final prefs =
+                                  await SharedPreferences.getInstance();
+                              await prefs.setBool(
+                                'onboarding_complete',
+                                true,
+                              );
                               if (context.mounted) {
                                 Navigator.of(
                                   context,

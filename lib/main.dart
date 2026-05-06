@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'features/onboarding/permission_screen.dart';
 import 'features/dashboard/dashboard_screen.dart';
 import 'features/settings/settings_screen.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Force dark status bar
@@ -18,11 +19,16 @@ void main() {
     ),
   );
 
-  runApp(const ProviderScope(child: RoastGuardApp()));
+  // Check if onboarding was already completed
+  final prefs = await SharedPreferences.getInstance();
+  final onboarded = prefs.getBool('onboarding_complete') ?? false;
+
+  runApp(ProviderScope(child: RoastGuardApp(skipOnboarding: onboarded)));
 }
 
 class RoastGuardApp extends StatelessWidget {
-  const RoastGuardApp({super.key});
+  final bool skipOnboarding;
+  const RoastGuardApp({super.key, required this.skipOnboarding});
 
   @override
   Widget build(BuildContext context) {
@@ -53,7 +59,7 @@ class RoastGuardApp extends StatelessWidget {
           ),
         ),
       ),
-      initialRoute: '/',
+      initialRoute: skipOnboarding ? '/dashboard' : '/',
       routes: {
         '/': (context) => const PermissionScreen(),
         '/dashboard': (context) => const DashboardScreen(),
