@@ -73,7 +73,7 @@ class _PermissionScreenState extends ConsumerState<PermissionScreen>
                   colors: [Color(0xFFFF4444), Color(0xFFFF8800)],
                 ).createShader(bounds),
                 child: const Text(
-                  'RoastGuard',
+                  'Doom Roast',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 40,

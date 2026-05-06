@@ -113,7 +113,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         colors: [Color(0xFFFF4444), Color(0xFFFF8800)],
                       ).createShader(bounds),
                       child: const Text(
-                        '🔥 RoastGuard',
+                        '🔥 Doom Roast',
                         style: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w900,
@@ -417,7 +417,7 @@ class _TrackingToggle extends ConsumerWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  isTracking ? 'RoastGuard is watching' : 'Paused for productivity',
+                  isTracking ? 'Doom Roast is watching' : 'Paused for productivity',
                   style: TextStyle(
                     color: isTracking ? const Color(0xFF22C55E) : Colors.grey[500],
                     fontSize: 13,

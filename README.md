@@ -1,8 +1,8 @@
-# 🔥 RoastGuard
+# 🔥 Doom Roast
 
 **The app that roasts you for doomscrolling.**
 
-RoastGuard monitors your screen time on social media apps and delivers brutally honest roast overlays when you exceed your time limit. It's the productivity app you didn't ask for, but desperately need.
+Doom Roast monitors your screen time on social media apps and delivers brutally honest roast overlays when you exceed your time limit. It's the productivity app you didn't ask for, but desperately need.
 
 ---
 
@@ -150,5 +150,5 @@ This project is licensed under the MIT License.
 
 <p align="center">
   <b>Stop scrolling. Start living.</b><br>
-  <i>— RoastGuard 🔥</i>
+  <i>— Doom Roast 🔥</i>
 </p>
