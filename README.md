@@ -9,11 +9,12 @@ Doom Roast monitors your screen time on social media apps and delivers brutally 
 ## ✨ Features
 
 - **📊 Usage Tracking** — Monitors time spent on Instagram, Twitter/X, Facebook, YouTube, TikTok, Reddit, and Snapchat
-- **🪟 Full-Screen Roast Overlay** — Covers the offending app with a savage roast message and a 5-second shame timer before you can dismiss
+- **🪟 Full-Screen Roast Overlay** — Covers the offending app with a savage roast message and a mandatory 10-second shame timer before you can dismiss
 - **🔥 Pre-Written Roast Bank** — 30+ hand-crafted, app-specific roasts that hit different
 - **⚡ Roast Intensity** — Choose between Gentle Nudge 😊, Moderate Shame 😤, or Full Intervention 🔥
-- **⏱️ Configurable Threshold** — Set your limit from 1 to 120 minutes per app
-- **🔄 Background Monitoring** — Foreground service polls every 30 seconds to catch you scrolling
+- **⏱️ Configurable Spam Threshold** — Set your limit from 1 to 60 minutes on the dashboard.
+- **🔄 Aggressive Background Monitoring** — Foreground service polls every 15 seconds. If you exceed your limit, the overlay will continuously spam you every 15 seconds until you close the doomscrolling app!
+- **⏸️ Productivity Pause** — One-tap toggle to temporarily pause monitoring when you actually need to use a tracked app for work.
 - **🚀 Boot Persistence** — Automatically restarts monitoring when your device reboots
 - **🌑 Dark Mode UI** — Premium dark interface with gradient accents and smooth animations
 
