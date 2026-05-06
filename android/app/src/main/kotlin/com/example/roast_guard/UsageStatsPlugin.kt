@@ -68,17 +68,17 @@ class UsageStatsPlugin(private val context: Context) : MethodChannel.MethodCallH
         val endTime = System.currentTimeMillis()
         val startTime = endTime - (hours * 60 * 60 * 1000L)
 
-        val stats = usm.queryUsageStats(UsageStatsManager.INTERVAL_DAILY, startTime, endTime)
+        val statsMap = usm.queryAndAggregateUsageStats(startTime, endTime)
 
-        val resultList = stats
-            ?.filter { it.totalTimeInForeground > 0 }
-            ?.map {
+        val resultList = statsMap.values
+            .filter { it.totalTimeInForeground > 0 }
+            .map {
                 mapOf(
                     "packageName" to it.packageName,
                     "totalTimeMs" to it.totalTimeInForeground,
                     "lastTimeUsed" to it.lastTimeUsed
                 )
-            } ?: emptyList()
+            }
 
         result.success(resultList)
     }

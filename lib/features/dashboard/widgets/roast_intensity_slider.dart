@@ -7,7 +7,8 @@ class RoastIntensitySlider extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final intensity = ref.watch(roastIntensityProvider);
+    final intensityAsync = ref.watch(roastIntensityProvider);
+    final intensity = intensityAsync.value ?? RoastIntensity.medium;
 
     return Container(
       padding: const EdgeInsets.all(20),

@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../providers/config_provider.dart';
 import '../../../core/constants/app_packages.dart';
 import '../../../core/services/usage_service.dart';
 import '../../../core/services/roast_engine.dart';
 
-class AppUsageCard extends StatelessWidget {
+class AppUsageCard extends ConsumerWidget {
   final AppUsageStat stat;
 
   const AppUsageCard({super.key, required this.stat});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final app = AppPackages.targets[stat.packageName];
     final name = app?.name ?? stat.packageName;
     final emoji = app?.emoji ?? '📱';
@@ -26,16 +28,8 @@ class AppUsageCard extends StatelessWidget {
         ? _Severity.moderate
         : _Severity.low;
 
-    return Container(
+    final cardContent = Padding(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF141414),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: severity.color.withValues(alpha: 0.25),
-          width: 1,
-        ),
-      ),
       child: Row(
         children: [
           // App Icon
@@ -103,6 +97,97 @@ class AppUsageCard extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+
+    final useCustom = ref.watch(useCustomThresholdsProvider).value ?? false;
+    if (!useCustom) {
+      return Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFF141414),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: severity.color.withValues(alpha: 0.25),
+            width: 1,
+          ),
+        ),
+        child: cardContent,
+      );
+    }
+
+    final customThresholdAsync = ref.watch(
+      customThresholdProvider(stat.packageName),
+    );
+    final customThreshold =
+        customThresholdAsync.value == -1 || customThresholdAsync.value == null
+        ? ref.watch(thresholdMinutesProvider).value ?? 10
+        : customThresholdAsync.value!;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF141414),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: severity.color.withValues(alpha: 0.25),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        children: [
+          cardContent,
+          const Divider(color: Colors.white10, height: 1),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(
+              children: [
+                const Icon(Icons.timer, color: Colors.grey, size: 16),
+                const SizedBox(width: 8),
+                Text(
+                  'Limit: $customThreshold min',
+                  style: TextStyle(
+                    color: Colors.grey[400],
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Expanded(
+                  child: SliderTheme(
+                    data: SliderThemeData(
+                      trackHeight: 2,
+                      thumbShape: const RoundSliderThumbShape(
+                        enabledThumbRadius: 6,
+                      ),
+                      overlayShape: const RoundSliderOverlayShape(
+                        overlayRadius: 12,
+                      ),
+                      activeTrackColor: const Color(0xFF8B5CF6),
+                      inactiveTrackColor: Colors.grey[800],
+                      thumbColor: const Color(0xFF8B5CF6),
+                    ),
+                    child: Slider(
+                      value: customThreshold.toDouble(),
+                      min: 1,
+                      max: 60,
+                      divisions: 59,
+                      onChanged: (val) async {
+                        final prefs = await ref.read(
+                          sharedPreferencesProvider.future,
+                        );
+                        await prefs.setInt(
+                          'custom_threshold_${stat.packageName}_minutes',
+                          val.toInt(),
+                        );
+                        ref.invalidate(
+                          customThresholdProvider(stat.packageName),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),

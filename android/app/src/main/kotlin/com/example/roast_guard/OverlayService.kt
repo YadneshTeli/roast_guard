@@ -1,6 +1,7 @@
 package com.example.roast_guard
 
 import android.app.Service
+import android.content.Context
 import android.content.Intent
 import android.graphics.PixelFormat
 import android.os.Handler
@@ -11,16 +12,29 @@ import android.widget.*
 
 class OverlayService : Service() {
 
+    companion object {
+        // Companion-object flag prevents re-entry races:
+        // if onStartCommand fires again before Android fully destroys the old
+        // instance, windowManager?.addView() would throw BadTokenException.
+        @Volatile
+        var isShowing: Boolean = false
+    }
+
     private var windowManager: WindowManager? = null
     private var overlayView: View? = null
 
+    // Promoted to class fields so removeOverlay() can cancel pending callbacks
+    // and prevent updates on detached views (fixes the handler/runnable leak).
+    private val handler = Handler(Looper.getMainLooper())
+    private var timerRunnable: Runnable? = null
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (overlayView != null) {
-            return START_NOT_STICKY
-        }
+        if (isShowing) return START_NOT_STICKY
+
         val packageName = intent?.getStringExtra("package_name") ?: return START_NOT_STICKY
         val totalMs = intent.getLongExtra("total_ms", 0L)
 
+        isShowing = true
         showOverlay(packageName, totalMs)
         return START_NOT_STICKY
     }
@@ -35,17 +49,27 @@ class OverlayService : Service() {
         val dismissBtn = overlayView?.findViewById<Button>(R.id.dismiss_btn)
         val timerText = overlayView?.findViewById<TextView>(R.id.timer_text)
 
-        roastText?.text = getRoastForPackage(packageName, totalMs)
+        // Prefer a roast pre-fetched by the Dart side (via GROQ); fall back to static.
+        val flutterPrefs = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+        val pendingRoast = flutterPrefs.getString("flutter.pending_roast", null)
+        roastText?.text = if (!pendingRoast.isNullOrBlank()) {
+            // Clear so the same roast isn't shown twice
+            flutterPrefs.edit().remove("flutter.pending_roast").apply()
+            pendingRoast
+        } else {
+            getRoastForPackage(packageName, totalMs)
+        }
 
-        // Force 10-second wait before dismiss
-        var secondsLeft = 10
+        // Force random wait between 10 and 60 seconds before dismiss
+        var secondsLeft = (10..60).random()
         timerText?.text = "You must face this for ${secondsLeft}s"
         dismissBtn?.isEnabled = false
         dismissBtn?.alpha = 0.4f
 
-        val handler = Handler(Looper.getMainLooper())
-        val timerRunnable = object : Runnable {
+        val runnable = object : Runnable {
             override fun run() {
+                // Guard: view may have been removed already
+                if (overlayView == null) return
                 secondsLeft--
                 if (secondsLeft <= 0) {
                     timerText?.text = "Fine. Go touch grass."
@@ -57,7 +81,8 @@ class OverlayService : Service() {
                 }
             }
         }
-        handler.postDelayed(timerRunnable, 1000)
+        timerRunnable = runnable
+        handler.postDelayed(runnable, 1000)
 
         dismissBtn?.setOnClickListener { removeOverlay() }
 
@@ -115,10 +140,35 @@ class OverlayService : Service() {
     }
 
     private fun removeOverlay() {
+        // Cancel pending timer callbacks BEFORE detaching the view
+        timerRunnable?.let { handler.removeCallbacks(it) }
+        timerRunnable = null
+
         overlayView?.let { windowManager?.removeView(it) }
         overlayView = null
-        stopSelf()
+        isShowing = false
+
+        // Set random grace period between 15s and 5m (300s) before next blast
+        val gracePeriodSeconds = (15..300).random()
+        val nextAllowedTime = System.currentTimeMillis() + (gracePeriodSeconds * 1000L)
+        getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+            .edit()
+            .putLong("next_allowed_roast_time", nextAllowedTime)
+            .apply()
+
+        // Service intentionally kept alive (no stopSelf) to avoid the race where
+        // Android starts a new instance before the old one is fully destroyed,
+        // which would cause windowManager?.addView() to throw BadTokenException.
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
+
+    override fun onDestroy() {
+        // Ensure cleanup even if the service is killed externally
+        timerRunnable?.let { handler.removeCallbacks(it) }
+        overlayView?.let { windowManager?.removeView(it) }
+        overlayView = null
+        isShowing = false
+        super.onDestroy()
+    }
 }

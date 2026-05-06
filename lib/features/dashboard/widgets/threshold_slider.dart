@@ -7,7 +7,8 @@ class ThresholdSlider extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final threshold = ref.watch(thresholdMinutesProvider);
+    final thresholdAsync = ref.watch(thresholdMinutesProvider);
+    final threshold = thresholdAsync.value ?? 10;
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -31,7 +32,7 @@ class ThresholdSlider extends ConsumerWidget {
                 ),
               ),
               Text(
-                '$threshold mins',
+                thresholdAsync.isLoading ? '…' : '$threshold mins',
                 style: const TextStyle(
                   color: Color(0xFFFF8800),
                   fontSize: 14,
@@ -43,10 +44,7 @@ class ThresholdSlider extends ConsumerWidget {
           const SizedBox(height: 8),
           Text(
             'Time allowed before the roasting begins',
-            style: TextStyle(
-              color: Colors.grey[500],
-              fontSize: 13,
-            ),
+            style: TextStyle(color: Colors.grey[500], fontSize: 13),
           ),
           const SizedBox(height: 16),
           SliderTheme(
@@ -64,7 +62,9 @@ class ThresholdSlider extends ConsumerWidget {
               max: 60,
               divisions: 59,
               onChanged: (value) {
-                ref.read(thresholdMinutesProvider.notifier).setThreshold(value.toInt());
+                ref
+                    .read(thresholdMinutesProvider.notifier)
+                    .setThreshold(value.toInt());
               },
             ),
           ),

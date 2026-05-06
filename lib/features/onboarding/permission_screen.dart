@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/services/usage_service.dart';
 
@@ -32,7 +34,9 @@ class _PermissionScreenState extends ConsumerState<PermissionScreen>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      _checkPermissions();
+      // Small delay: Android may not have fully committed the grant by the time
+      // this callback fires (e.g. user grants and switches back very quickly).
+      Future.delayed(const Duration(milliseconds: 300), _checkPermissions);
     }
   }
 
@@ -45,6 +49,11 @@ class _PermissionScreenState extends ConsumerState<PermissionScreen>
         _hasOverlay = overlay;
       });
     }
+  }
+
+  Future<void> _requestPermissions() async {
+    // Request foreground task notification permission (Android 13+)
+    await FlutterForegroundTask.requestNotificationPermission();
   }
 
   @override
@@ -126,17 +135,14 @@ class _PermissionScreenState extends ConsumerState<PermissionScreen>
                     child: ElevatedButton(
                       onPressed: (_hasUsage && _hasOverlay)
                           ? () async {
+                              // Request notification permission for foreground task (Android 13+)
+                              await _requestPermissions();
                               await _usageService.startMonitorService();
                               final prefs =
                                   await SharedPreferences.getInstance();
-                              await prefs.setBool(
-                                'onboarding_complete',
-                                true,
-                              );
+                              await prefs.setBool('onboarding_complete', true);
                               if (context.mounted) {
-                                Navigator.of(
-                                  context,
-                                ).pushReplacementNamed('/dashboard');
+                                context.go('/dashboard');
                               }
                             }
                           : null,

@@ -44,23 +44,34 @@ class ForegroundMonitorService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+
         createNotificationChannel()
         startForeground(1, buildNotification())
 
-        // Reset roasted apps daily
         resetIfNewDay()
 
         handler.removeCallbacks(pollRunnable)
         handler.post(pollRunnable)
         Log.d(TAG, "Monitor service started, polling every ${pollInterval / 1000}s")
-        return START_STICKY
+        return START_NOT_STICKY   // Do not auto-restart; the toggle controls restarts
     }
 
-    private fun getThresholdMs(): Long {
-        // Read from Flutter's SharedPreferences (file: FlutterSharedPreferences, keys prefixed with "flutter.")
+    /**
+     * Read the per-app time threshold from Flutter's SharedPreferences.
+     * Flutter stores the value as INT (setInt), so we must read it with getInt
+     * and widen to Long — using getLong would return the default on some devices
+     * because the stored type tag is INT, not LONG.
+     */
+    private fun getThresholdMs(currentApp: String): Long {
         val flutterPrefs = getSharedPreferences("FlutterSharedPreferences", MODE_PRIVATE)
-        val minutes = flutterPrefs.getLong("flutter.threshold_minutes", 10L)
-        Log.d(TAG, "Threshold: ${minutes}m (${minutes * 60 * 1000}ms)")
+        val useCustom = flutterPrefs.getBoolean("flutter.use_custom_thresholds", false)
+        val minutes = if (useCustom) {
+            val custom = flutterPrefs.getInt("flutter.custom_threshold_${currentApp}_minutes", -1)
+            if (custom != -1) custom.toLong() else flutterPrefs.getInt("flutter.threshold_minutes", 10).toLong()
+        } else {
+            flutterPrefs.getInt("flutter.threshold_minutes", 10).toLong()
+        }
+        Log.d(TAG, "Threshold for $currentApp: ${minutes}m (${minutes * 60 * 1000}ms)")
         return minutes * 60 * 1000L
     }
 
@@ -75,13 +86,26 @@ class ForegroundMonitorService : Service() {
     private fun checkAndRoast() {
         resetIfNewDay()
 
+        val flutterPrefs = getSharedPreferences("FlutterSharedPreferences", MODE_PRIVATE)
+        
+        // Suppress overlay blasts if tracking is disabled
+        val trackingEnabled = flutterPrefs.getBoolean("flutter.tracking_enabled", true)
+        if (!trackingEnabled) {
+            return
+        }
+
+        val nextAllowedTime = flutterPrefs.getLong("next_allowed_roast_time", 0L)
+        if (System.currentTimeMillis() < nextAllowedTime) {
+            return
+        }
+
         val currentApp = getCurrentForegroundApp()
         if (currentApp == null || currentApp !in targetApps) {
             return
         }
 
         val totalMs = getAppUsageToday(currentApp)
-        val thresholdMs = getThresholdMs()
+        val thresholdMs = getThresholdMs(currentApp)
 
         Log.d(TAG, "App: $currentApp, Usage: ${totalMs / 1000}s, Threshold: ${thresholdMs / 1000}s")
 
@@ -93,12 +117,11 @@ class ForegroundMonitorService : Service() {
 
     /**
      * Uses UsageEvents to find the ACTUAL current foreground app.
-     * This is far more reliable than queryUsageStats for real-time detection.
+     * MOVE_TO_FOREGROUND events are more reliable than queryUsageStats for real-time detection.
      */
     private fun getCurrentForegroundApp(): String? {
         val usm = getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
         val now = System.currentTimeMillis()
-        // Query events from the last 5 minutes to find the most recent MOVE_TO_FOREGROUND
         val events = usm.queryEvents(now - 5 * 60 * 1000L, now)
 
         var lastForegroundApp: String? = null
@@ -125,7 +148,6 @@ class ForegroundMonitorService : Service() {
     private fun getAppUsageToday(packageName: String): Long {
         val usm = getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
 
-        // Get start of today
         val calendar = java.util.Calendar.getInstance().apply {
             set(java.util.Calendar.HOUR_OF_DAY, 0)
             set(java.util.Calendar.MINUTE, 0)
@@ -140,6 +162,12 @@ class ForegroundMonitorService : Service() {
     }
 
     private fun triggerRoast(packageName: String, totalMs: Long) {
+        val todayStr = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(java.util.Date())
+        getSharedPreferences("FlutterSharedPreferences", MODE_PRIVATE)
+            .edit()
+            .putString("flutter.last_broken_date", todayStr)
+            .apply()
+
         val intent = Intent(this, OverlayService::class.java).apply {
             putExtra("package_name", packageName)
             putExtra("total_ms", totalMs)

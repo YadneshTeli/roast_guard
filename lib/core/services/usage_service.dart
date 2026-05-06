@@ -1,6 +1,8 @@
 import 'package:flutter/services.dart';
+import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 
-/// Service to communicate with the native UsageStatsPlugin via MethodChannel.
+/// Service to communicate with the native UsageStatsPlugin via MethodChannel,
+/// and manage the foreground monitoring service via flutter_foreground_task.
 class UsageService {
   static const _channel = MethodChannel('com.roastguard/usage_stats');
 
@@ -34,12 +36,28 @@ class UsageService {
     return await _channel.invokeMethod<String>('getForegroundApp');
   }
 
+  /// Start the native foreground monitoring service.
+  /// Uses FlutterForegroundTask for proper lifecycle management on the Dart side,
+  /// then delegates to the existing Kotlin ForegroundMonitorService via the channel.
   Future<void> startMonitorService() async {
-    await _channel.invokeMethod('startMonitorService');
+    await FlutterForegroundTask.startService(
+      serviceId: 256,
+      notificationTitle: 'RoastGuard is watching 👀',
+      notificationText: 'Monitoring your scroll habits...',
+    );
+    // Also notify the existing Kotlin channel so ForegroundMonitorService
+    // knows to start polling (the task handler runs alongside it).
+    try {
+      await _channel.invokeMethod('startMonitorService');
+    } catch (_) {}
   }
 
+  /// Stop the foreground monitoring service.
   Future<void> stopMonitorService() async {
-    await _channel.invokeMethod('stopMonitorService');
+    await FlutterForegroundTask.stopService();
+    try {
+      await _channel.invokeMethod('stopMonitorService');
+    } catch (_) {}
   }
 }
 

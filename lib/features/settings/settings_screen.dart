@@ -1,14 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import '../../providers/config_provider.dart';
 import '../../core/constants/app_packages.dart';
+
+// ---------------------------------------------------------------------------
+// Package info provider — loaded once, cached
+// ---------------------------------------------------------------------------
+
+final _packageInfoProvider = FutureProvider<PackageInfo>(
+  (_) => PackageInfo.fromPlatform(),
+);
+
+// ---------------------------------------------------------------------------
+// Screen
+// ---------------------------------------------------------------------------
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final threshold = ref.watch(thresholdMinutesProvider);
+    final thresholdAsync = ref.watch(thresholdMinutesProvider);
+    final threshold = thresholdAsync.value ?? 10;
 
     return Scaffold(
       backgroundColor: const Color(0xFF0A0A0A),
@@ -49,31 +63,33 @@ class SettingsScreen extends ConsumerWidget {
                   ],
                 ),
                 const SizedBox(height: 8),
-                SliderTheme(
-                  data: SliderTheme.of(context).copyWith(
-                    activeTrackColor: const Color(0xFFFF4444),
-                    inactiveTrackColor: Colors.grey[800],
-                    thumbColor: const Color(0xFFFF4444),
-                    overlayColor: const Color(
-                      0xFFFF4444,
-                    ).withValues(alpha: 0.2),
-                    thumbShape: const RoundSliderThumbShape(
-                      enabledThumbRadius: 8,
-                    ),
-                    trackHeight: 4,
-                  ),
-                  child: Slider(
-                    value: threshold.toDouble(),
-                    min: 1,
-                    max: 120,
-                    divisions: 119,
-                    onChanged: (v) {
-                      ref
-                          .read(thresholdMinutesProvider.notifier)
-                          .setThreshold(v.round());
-                    },
-                  ),
-                ),
+                thresholdAsync.isLoading
+                    ? const LinearProgressIndicator(color: Color(0xFFFF4444))
+                    : SliderTheme(
+                        data: SliderTheme.of(context).copyWith(
+                          activeTrackColor: const Color(0xFFFF4444),
+                          inactiveTrackColor: Colors.grey[800],
+                          thumbColor: const Color(0xFFFF4444),
+                          overlayColor: const Color(
+                            0xFFFF4444,
+                          ).withValues(alpha: 0.2),
+                          thumbShape: const RoundSliderThumbShape(
+                            enabledThumbRadius: 8,
+                          ),
+                          trackHeight: 4,
+                        ),
+                        child: Slider(
+                          value: threshold.toDouble(),
+                          min: 1,
+                          max: 120,
+                          divisions: 119,
+                          onChanged: (v) {
+                            ref
+                                .read(thresholdMinutesProvider.notifier)
+                                .setThreshold(v.round());
+                          },
+                        ),
+                      ),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -139,27 +155,46 @@ class SettingsScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 16),
 
-          // About
-          _SettingsSection(
-            title: '🔥 About RoastGuard',
-            subtitle: 'v1.0.0 — The app that roasts you for doomscrolling',
-            child: Text(
-              'RoastGuard monitors your screen time on social media apps and delivers '
-              'brutally honest roasts when you exceed your time limit. '
-              "It's the productivity app you didn't ask for, but desperately need.",
-              style: TextStyle(
-                color: Colors.grey[400],
-                fontSize: 13,
-                height: 1.5,
-              ),
-            ),
-          ),
+          // About — dynamic version via package_info_plus
+          _AboutSection(),
           const SizedBox(height: 32),
         ],
       ),
     );
   }
 }
+
+// ---------------------------------------------------------------------------
+// About section with dynamic version
+// ---------------------------------------------------------------------------
+
+class _AboutSection extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final packageInfoAsync = ref.watch(_packageInfoProvider);
+
+    final versionStr = packageInfoAsync.when(
+      data: (info) => 'v${info.version}+${info.buildNumber}',
+      loading: () => 'v—',
+      error: (e, _) => 'v1.0.2',
+    );
+
+    return _SettingsSection(
+      title: '🔥 About RoastGuard',
+      subtitle: '$versionStr — The app that roasts you for doomscrolling',
+      child: Text(
+        'RoastGuard monitors your screen time on social media apps and delivers '
+        'brutally honest AI-generated roasts when you exceed your time limit. '
+        "It's the productivity app you didn't ask for, but desperately need.",
+        style: TextStyle(color: Colors.grey[400], fontSize: 13, height: 1.5),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Reusable section card
+// ---------------------------------------------------------------------------
 
 class _SettingsSection extends StatelessWidget {
   final String title;
