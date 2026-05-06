@@ -49,14 +49,18 @@ class OverlayService : Service() {
         val dismissBtn = overlayView?.findViewById<Button>(R.id.dismiss_btn)
         val timerText = overlayView?.findViewById<TextView>(R.id.timer_text)
 
-        // Prefer a roast pre-fetched by the Dart side (via GROQ); fall back to static.
+        // Read the pre-fetched AI roast cached by the Flutter side at startup.
+        // Key written by Dart: SharedPreferences.setString('cached_roast_$packageName', ...)
         val flutterPrefs = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-        val pendingRoast = flutterPrefs.getString("flutter.pending_roast", null)
-        roastText?.text = if (!pendingRoast.isNullOrBlank()) {
-            // Clear so the same roast isn't shown twice
-            flutterPrefs.edit().remove("flutter.pending_roast").apply()
-            pendingRoast
+        val cacheKey = "flutter.cached_roast_$packageName"
+        val cachedRoast = flutterPrefs.getString(cacheKey, null)
+
+        roastText?.text = if (!cachedRoast.isNullOrBlank()) {
+            // Consume the cached roast so Flutter will refresh it next app open
+            flutterPrefs.edit().remove(cacheKey).apply()
+            cachedRoast
         } else {
+            // Cache miss — use static fallback (happens on first launch or offline)
             getRoastForPackage(packageName, totalMs)
         }
 
@@ -68,7 +72,6 @@ class OverlayService : Service() {
 
         val runnable = object : Runnable {
             override fun run() {
-                // Guard: view may have been removed already
                 if (overlayView == null) return
                 secondsLeft--
                 if (secondsLeft <= 0) {
@@ -97,46 +100,9 @@ class OverlayService : Service() {
 
         windowManager?.addView(overlayView, params)
     }
-
     private fun getRoastForPackage(packageName: String, totalMs: Long): String {
         val minutes = totalMs / 60_000
-        val roasts = mapOf(
-            "com.instagram.android" to listOf(
-                "You've been on Instagram for $minutes mins. The algorithm is winning. You are losing.",
-                "Congrats, $minutes mins watching people who are actually doing things.",
-                "Instagram called. Even they think you need to touch grass.",
-                "$minutes mins of reels. Zero reels of your own life recorded."
-            ),
-            "com.twitter.android" to listOf(
-                "$minutes mins on Twitter. You haven't changed a single mind. Log off.",
-                "Breaking: Local person wastes $minutes mins arguing with strangers online.",
-                "$minutes mins of hot takes. None of them were yours."
-            ),
-            "com.facebook.katana" to listOf(
-                "$minutes mins on Facebook. Are you okay?",
-                "You've been on Facebook for $minutes mins. Your parents are literally the target audience.",
-                "$minutes mins of Facebook. You are becoming your parents. This is not a compliment."
-            ),
-            "com.google.android.youtube" to listOf(
-                "$minutes mins on YouTube. You started with one video. Classic.",
-                "The recommended algorithm has claimed another $minutes mins of your life.",
-                "$minutes mins of YouTube. You could have built something. Instead you watched someone else build."
-            ),
-            "com.zhiliaoapp.musically" to listOf(
-                "$minutes mins on TikTok. Your attention span is now 3 seconds. Congratulations.",
-                "You've lost $minutes mins to 15-second videos. Do the math. That's a lot of videos."
-            ),
-            "com.reddit.frontpage" to listOf(
-                "$minutes mins on Reddit. You've learned a lot about things that don't matter.",
-                "You spent $minutes mins on Reddit. AMA: How does it feel to waste your potential?"
-            ),
-            "com.snapchat.android" to listOf(
-                "$minutes mins on Snapchat. Those streaks won't help your resume.",
-                "You spent $minutes mins sending disappearing messages. Much like your productivity."
-            )
-        )
-        val list = roasts[packageName] ?: listOf("$minutes mins of your life. Gone. Forever.")
-        return list.random()
+        return "$minutes mins wasted. Your future self is already disappointed."
     }
 
     private fun removeOverlay() {

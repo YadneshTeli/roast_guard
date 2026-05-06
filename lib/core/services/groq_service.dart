@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:pretty_dio_logger/pretty_dio_logger.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'usage_service.dart';
 
 import '../../core/constants/app_packages.dart';
@@ -13,14 +15,24 @@ class GroqService {
   GroqService._();
 
   static const _baseUrl = 'https://api.groq.com/openai/v1/chat/completions';
-  static const _model = 'llama-3-8b-instant';
+  static const _model = 'llama-3.1-8b-instant';
 
   static final _dio = Dio(
     BaseOptions(
       connectTimeout: const Duration(seconds: 8),
       receiveTimeout: const Duration(seconds: 10),
     ),
-  );
+  )..interceptors.add(
+      PrettyDioLogger(
+        requestHeader: true,
+        requestBody: true,
+        responseBody: true,
+        responseHeader: false,
+        error: true,
+        compact: true,
+        maxWidth: 90,
+      ),
+    );
 
   static final _fallbacks = <String, List<String>>{
     'com.instagram.android': [
@@ -107,6 +119,67 @@ class GroqService {
 
     return _fallback(packageName, timeStr);
   }
+
+  /// Pre-fetches one AI roast per tracked app and caches each into
+  /// SharedPreferences under the key `cached_roast_{packageName}`.
+  /// Called at app startup so OverlayService can show roasts instantly.
+  static Future<void> prefetchRoasts(RoastIntensity intensity) async {
+    final apiKey = dotenv.env['GROQ_API'];
+    if (apiKey == null || apiKey.isEmpty) return;
+
+    final prefs = await _getPrefs();
+
+    for (final entry in AppPackages.targets.entries) {
+      final packageName = entry.key;
+      final appName = entry.value.name;
+
+      // Skip if a cached roast is already waiting (not yet consumed)
+      final existing = prefs.getString('cached_roast_$packageName');
+      if (existing != null && existing.isNotEmpty) continue;
+
+      try {
+        final response = await _dio.post<Map<String, dynamic>>(
+          _baseUrl,
+          options: Options(
+            headers: {
+              HttpHeaders.authorizationHeader: 'Bearer $apiKey',
+              HttpHeaders.contentTypeHeader: 'application/json',
+            },
+          ),
+          data: {
+            'model': _model,
+            'messages': [
+              {'role': 'system', 'content': _getSystemPrompt(intensity)},
+              {
+                'role': 'user',
+                'content':
+                    'Write ONE brutal roast (2 sentences max) for someone '
+                    'who spends too much time on $appName. Be sharp, witty, specific.',
+              },
+            ],
+            'temperature': 0.95,
+            'max_tokens': 80,
+          },
+        );
+
+        final content =
+            response.data?['choices']?[0]?['message']?['content'] as String?;
+        if (content != null && content.trim().isNotEmpty) {
+          await prefs.setString('cached_roast_$packageName', content.trim());
+        }
+      } catch (_) {
+        // Skip this app on any error — overlay will use static fallback
+      }
+    }
+  }
+
+  // Lazily fetched SharedPreferences instance
+  static SharedPreferences? _prefs;
+  static Future<SharedPreferences> _getPrefs() async {
+    _prefs ??= await SharedPreferences.getInstance();
+    return _prefs!;
+  }
+
 
   static String _fallback(String packageName, String timeStr) {
     final list =

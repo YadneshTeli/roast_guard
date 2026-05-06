@@ -9,6 +9,8 @@ import 'features/onboarding/permission_screen.dart';
 import 'features/dashboard/dashboard_screen.dart';
 import 'features/settings/settings_screen.dart';
 import 'features/reports/weekly_report_screen.dart';
+import 'core/services/groq_service.dart';
+import 'providers/config_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -45,6 +47,17 @@ void main() async {
 
   final prefs = await SharedPreferences.getInstance();
   final onboarded = prefs.getBool('onboarding_complete') ?? false;
+
+  // Persist GROQ API key so native OverlayService can read it directly
+  final groqKey = dotenv.env['GROQ_API'] ?? '';
+  if (groqKey.isNotEmpty) {
+    await prefs.setString('groq_api_key', groqKey);
+  }
+
+  // Pre-fetch AI roasts per app in background — OverlayService reads from cache
+  final intensityIndex = prefs.getInt('roast_intensity') ?? 1;
+  final intensity = RoastIntensity.values[intensityIndex.clamp(0, 2)];
+  GroqService.prefetchRoasts(intensity); // fire-and-forget
 
   runApp(ProviderScope(child: RoastGuardApp(skipOnboarding: onboarded)));
 }
