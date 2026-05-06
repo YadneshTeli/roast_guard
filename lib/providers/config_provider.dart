@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -46,6 +47,8 @@ final thresholdMinutesProvider = NotifierProvider<ThresholdNotifier, int>(
 );
 
 class ThresholdNotifier extends Notifier<int> {
+  static const _channel = MethodChannel('com.roastguard/usage_stats');
+
   @override
   int build() {
     _load();
@@ -61,5 +64,10 @@ class ThresholdNotifier extends Notifier<int> {
     state = minutes;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('threshold_minutes', minutes);
+
+    // Restart the monitor service so it picks up the new threshold
+    try {
+      await _channel.invokeMethod('startMonitorService');
+    } catch (_) {}
   }
 }

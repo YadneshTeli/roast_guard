@@ -1,19 +1,24 @@
 package com.example.roast_guard
 
 import android.app.*
+import android.app.usage.UsageEvents
 import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.Intent
-import android.content.SharedPreferences
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.util.Log
 import androidx.core.app.NotificationCompat
 
 class ForegroundMonitorService : Service() {
 
+    companion object {
+        private const val TAG = "RoastGuardMonitor"
+    }
+
     private val handler = Handler(Looper.getMainLooper())
-    private val pollInterval = 30_000L // 30 seconds
+    private val pollInterval = 15_000L // 15 seconds for faster detection
 
     private val targetApps = setOf(
         "com.instagram.android",
@@ -25,14 +30,17 @@ class ForegroundMonitorService : Service() {
         "com.snapchat.android"
     )
 
-    private var lastForegroundApp: String? = null
-    private var sessionStart: Long = 0L
-    private val usageMap = mutableMapOf<String, Long>()
+    // Track which apps have already been roasted today to avoid spam
     private val roastedApps = mutableSetOf<String>()
+    private var lastResetDay = -1
 
     private val pollRunnable = object : Runnable {
         override fun run() {
-            checkForegroundApp()
+            try {
+                checkAndRoast()
+            } catch (e: Exception) {
+                Log.e(TAG, "Error during poll", e)
+            }
             handler.postDelayed(this, pollInterval)
         }
     }
@@ -40,66 +48,105 @@ class ForegroundMonitorService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         createNotificationChannel()
         startForeground(1, buildNotification())
-        loadThresholds()
+
+        // Reset roasted apps daily
+        resetIfNewDay()
+
+        handler.removeCallbacks(pollRunnable)
         handler.post(pollRunnable)
+        Log.d(TAG, "Monitor service started, polling every ${pollInterval / 1000}s")
         return START_STICKY
     }
 
     private fun getThresholdMs(): Long {
-        val prefs = getSharedPreferences("roastguard_prefs", MODE_PRIVATE)
-        return prefs.getLong("threshold_ms", 10 * 60 * 1000L) // default 10 minutes
+        // Read from Flutter's SharedPreferences (file: FlutterSharedPreferences, keys prefixed with "flutter.")
+        val flutterPrefs = getSharedPreferences("FlutterSharedPreferences", MODE_PRIVATE)
+        val minutes = flutterPrefs.getLong("flutter.threshold_minutes", 10L)
+        Log.d(TAG, "Threshold: ${minutes}m (${minutes * 60 * 1000}ms)")
+        return minutes * 60 * 1000L
     }
 
-    private fun loadThresholds() {
-        // Reset daily at midnight
-        val prefs = getSharedPreferences("roastguard_prefs", MODE_PRIVATE)
-        val lastReset = prefs.getLong("last_reset", 0L)
-        val now = System.currentTimeMillis()
-        val oneDayMs = 24 * 60 * 60 * 1000L
-        if (now - lastReset > oneDayMs) {
-            usageMap.clear()
+    private fun resetIfNewDay() {
+        val today = java.util.Calendar.getInstance().get(java.util.Calendar.DAY_OF_YEAR)
+        if (today != lastResetDay) {
             roastedApps.clear()
-            prefs.edit().putLong("last_reset", now).apply()
+            lastResetDay = today
+            Log.d(TAG, "New day — reset roasted apps")
         }
     }
 
-    private fun checkForegroundApp() {
+    private fun checkAndRoast() {
+        resetIfNewDay()
+
         val currentApp = getCurrentForegroundApp()
-
-        if (currentApp != lastForegroundApp) {
-            // App switched — accumulate time for previous app
-            if (lastForegroundApp != null && sessionStart > 0) {
-                val elapsed = System.currentTimeMillis() - sessionStart
-                usageMap[lastForegroundApp!!] = (usageMap[lastForegroundApp!!] ?: 0L) + elapsed
-            }
-            lastForegroundApp = currentApp
-            sessionStart = System.currentTimeMillis()
-        } else if (currentApp != null && sessionStart > 0) {
-            // Same app still in foreground — accumulate
-            val elapsed = System.currentTimeMillis() - sessionStart
-            usageMap[currentApp] = (usageMap[currentApp] ?: 0L) + elapsed
-            sessionStart = System.currentTimeMillis()
+        if (currentApp == null || currentApp !in targetApps) {
+            return
         }
 
-        // Check if current app has hit threshold
+        // Already roasted this app today
+        if (currentApp in roastedApps) {
+            return
+        }
+
+        // Query actual usage time from Android's UsageStatsManager
+        val totalMs = getAppUsageToday(currentApp)
         val thresholdMs = getThresholdMs()
-        if (currentApp != null && currentApp in targetApps) {
-            val total = usageMap[currentApp] ?: 0L
-            if (total >= thresholdMs && currentApp !in roastedApps) {
-                triggerRoast(currentApp, total)
-                roastedApps.add(currentApp)
-            }
+
+        Log.d(TAG, "App: $currentApp, Usage: ${totalMs / 1000}s, Threshold: ${thresholdMs / 1000}s")
+
+        if (totalMs >= thresholdMs) {
+            Log.d(TAG, "THRESHOLD EXCEEDED for $currentApp — triggering roast!")
+            triggerRoast(currentApp, totalMs)
+            roastedApps.add(currentApp)
         }
     }
 
+    /**
+     * Uses UsageEvents to find the ACTUAL current foreground app.
+     * This is far more reliable than queryUsageStats for real-time detection.
+     */
     private fun getCurrentForegroundApp(): String? {
         val usm = getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
-        val time = System.currentTimeMillis()
-        val stats = usm.queryUsageStats(
-            UsageStatsManager.INTERVAL_DAILY,
-            time - 10_000L, time
-        )
-        return stats?.maxByOrNull { it.lastTimeUsed }?.packageName
+        val now = System.currentTimeMillis()
+        // Query events from the last 5 minutes to find the most recent MOVE_TO_FOREGROUND
+        val events = usm.queryEvents(now - 5 * 60 * 1000L, now)
+
+        var lastForegroundApp: String? = null
+        var lastForegroundTime = 0L
+        val event = UsageEvents.Event()
+
+        while (events.hasNextEvent()) {
+            events.getNextEvent(event)
+            if (event.eventType == UsageEvents.Event.MOVE_TO_FOREGROUND) {
+                if (event.timeStamp > lastForegroundTime) {
+                    lastForegroundTime = event.timeStamp
+                    lastForegroundApp = event.packageName
+                }
+            }
+        }
+
+        return lastForegroundApp
+    }
+
+    /**
+     * Gets actual usage time for an app today, tracked by Android itself.
+     * No in-memory state needed — survives service restarts.
+     */
+    private fun getAppUsageToday(packageName: String): Long {
+        val usm = getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
+
+        // Get start of today
+        val calendar = java.util.Calendar.getInstance().apply {
+            set(java.util.Calendar.HOUR_OF_DAY, 0)
+            set(java.util.Calendar.MINUTE, 0)
+            set(java.util.Calendar.SECOND, 0)
+            set(java.util.Calendar.MILLISECOND, 0)
+        }
+        val startOfDay = calendar.timeInMillis
+        val now = System.currentTimeMillis()
+
+        val stats = usm.queryUsageStats(UsageStatsManager.INTERVAL_DAILY, startOfDay, now)
+        return stats?.firstOrNull { it.packageName == packageName }?.totalTimeInForeground ?: 0L
     }
 
     private fun triggerRoast(packageName: String, totalMs: Long) {
@@ -134,6 +181,7 @@ class ForegroundMonitorService : Service() {
 
     override fun onDestroy() {
         handler.removeCallbacks(pollRunnable)
+        Log.d(TAG, "Monitor service destroyed")
         super.onDestroy()
     }
 }
