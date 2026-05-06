@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.2] - 2026-05-06
+
+### Changed
+- **Continuous Overlay Spam**: The background service will now continuously show the overlay (every 15 seconds) after the threshold is hit until the targeted app is closed, instead of just once per day.
+
+### Added
+- **Configurable Spam Threshold UI**: Added a sleek slider in the dashboard to quickly change the time threshold before the roasting starts.
+
+---
+
+## [1.0.1] - 2026-05-06
+
+### Changed
+- **Rebrand to Doom Roast**: Changed app name from RoastGuard to Doom Roast and updated the app icon to a new premium flat vector flame design.
+- **Overlay Duration**: Increased the mandatory shame wait timer from 5 seconds to 10 seconds.
+- **Active Monitoring Toggle**: Added an in-app toggle on the dashboard to easily pause and resume background monitoring.
+
+---
+
 ## [1.0.0] - 2026-05-06
 
 ### 🔥 Initial Release — MVP
