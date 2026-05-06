@@ -8,6 +8,7 @@ import '../../core/services/roast_engine.dart';
 import '../../core/services/usage_service.dart';
 import 'widgets/app_usage_card.dart';
 import 'widgets/roast_intensity_slider.dart';
+import 'widgets/threshold_slider.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -226,6 +227,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           ),
                         const SizedBox(height: 12),
                         const _TrackingToggle(),
+                        const SizedBox(height: 20),
+                        const ThresholdSlider(),
                         const SizedBox(height: 20),
                         const RoastIntensitySlider(),
                         const SizedBox(height: 32),
