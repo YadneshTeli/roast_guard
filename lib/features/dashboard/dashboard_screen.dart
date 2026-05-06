@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../providers/usage_provider.dart';
+import '../../providers/config_provider.dart';
 import '../../core/constants/app_packages.dart';
 import '../../core/services/roast_engine.dart';
 import '../../core/services/usage_service.dart';
@@ -20,8 +22,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   @override
   void initState() {
     super.initState();
-    // Always ensure the monitoring service is running
-    _usageService.startMonitorService();
+    // Always ensure the monitoring service is running if tracking is enabled
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final prefs = await SharedPreferences.getInstance();
+      final enabled = prefs.getBool('tracking_enabled') ?? true;
+      if (enabled) {
+        _usageService.startMonitorService();
+      }
+    });
   }
 
   @override
@@ -216,6 +224,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                               child: AppUsageCard(stat: s),
                             ),
                           ),
+                        const SizedBox(height: 12),
+                        const _TrackingToggle(),
                         const SizedBox(height: 20),
                         const RoastIntensitySlider(),
                         const SizedBox(height: 32),
@@ -355,6 +365,74 @@ class _QuickRoastCard extends StatelessWidget {
               fontWeight: FontWeight.w500,
               height: 1.4,
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TrackingToggle extends ConsumerWidget {
+  const _TrackingToggle();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isTracking = ref.watch(trackingEnabledProvider);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1A1A1A),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isTracking ? const Color(0xFF22C55E).withValues(alpha: 0.3) : Colors.grey[800]!,
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: isTracking ? const Color(0xFF0D2818) : Colors.grey[900],
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              isTracking ? Icons.visibility_rounded : Icons.visibility_off_rounded,
+              color: isTracking ? const Color(0xFF22C55E) : Colors.grey,
+              size: 24,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Active Monitoring',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  isTracking ? 'RoastGuard is watching' : 'Paused for productivity',
+                  style: TextStyle(
+                    color: isTracking ? const Color(0xFF22C55E) : Colors.grey[500],
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Switch(
+            value: isTracking,
+            activeTrackColor: const Color(0xFF22C55E).withValues(alpha: 0.5),
+            activeThumbColor: const Color(0xFF22C55E),
+            onChanged: (val) {
+              ref.read(trackingEnabledProvider.notifier).toggleTracking(val);
+            },
           ),
         ],
       ),

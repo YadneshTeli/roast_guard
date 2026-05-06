@@ -198,6 +198,7 @@ class ForegroundMonitorService : Service() {
 
     override fun onDestroy() {
         handler.removeCallbacks(pollRunnable)
+        stopForeground(true)
         Log.d(TAG, "Monitor service destroyed")
         super.onDestroy()
     }

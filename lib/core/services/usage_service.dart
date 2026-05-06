@@ -37,6 +37,10 @@ class UsageService {
   Future<void> startMonitorService() async {
     await _channel.invokeMethod('startMonitorService');
   }
+
+  Future<void> stopMonitorService() async {
+    await _channel.invokeMethod('stopMonitorService');
+  }
 }
 
 /// Represents usage stats for a single app.

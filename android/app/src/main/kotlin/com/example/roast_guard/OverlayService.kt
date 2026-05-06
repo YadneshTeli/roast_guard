@@ -34,8 +34,8 @@ class OverlayService : Service() {
 
         roastText?.text = getRoastForPackage(packageName, totalMs)
 
-        // Force 5-second wait before dismiss
-        var secondsLeft = 5
+        // Force 10-second wait before dismiss
+        var secondsLeft = 10
         timerText?.text = "You must face this for ${secondsLeft}s"
         dismissBtn?.isEnabled = false
         dismissBtn?.alpha = 0.4f

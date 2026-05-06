@@ -25,6 +25,7 @@ class UsageStatsPlugin(private val context: Context) : MethodChannel.MethodCallH
             "getUsageStats" -> getUsageStats(call, result)
             "getForegroundApp" -> result.success(getForegroundApp())
             "startMonitorService" -> startMonitorService(result)
+            "stopMonitorService" -> stopMonitorService(result)
             else -> result.notImplemented()
         }
     }
@@ -96,6 +97,12 @@ class UsageStatsPlugin(private val context: Context) : MethodChannel.MethodCallH
     private fun startMonitorService(result: MethodChannel.Result) {
         val intent = Intent(context, ForegroundMonitorService::class.java)
         context.startForegroundService(intent)
+        result.success(null)
+    }
+
+    private fun stopMonitorService(result: MethodChannel.Result) {
+        val intent = Intent(context, ForegroundMonitorService::class.java)
+        context.stopService(intent)
         result.success(null)
     }
 }

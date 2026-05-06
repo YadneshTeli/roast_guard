@@ -71,3 +71,37 @@ class ThresholdNotifier extends Notifier<int> {
     } catch (_) {}
   }
 }
+
+/// Provider to toggle monitoring service
+final trackingEnabledProvider = NotifierProvider<TrackingEnabledNotifier, bool>(
+  TrackingEnabledNotifier.new,
+);
+
+class TrackingEnabledNotifier extends Notifier<bool> {
+  static const _channel = MethodChannel('com.roastguard/usage_stats');
+
+  @override
+  bool build() {
+    _load();
+    return true;
+  }
+
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    state = prefs.getBool('tracking_enabled') ?? true;
+  }
+
+  Future<void> toggleTracking(bool enabled) async {
+    state = enabled;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('tracking_enabled', enabled);
+
+    try {
+      if (enabled) {
+        await _channel.invokeMethod('startMonitorService');
+      } else {
+        await _channel.invokeMethod('stopMonitorService');
+      }
+    } catch (_) {}
+  }
+}
