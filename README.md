@@ -134,11 +134,11 @@ flutter run
 
 ## 🗺️ Roadmap
 
-- [ ] **AI Roasts** — Dynamic roasts via Gemini API based on usage patterns
-- [ ] **Weekly Shame Report** — Beautiful shareable summary card
-- [ ] **Streak System** — Track days under your limits
+- [x] **AI Roasts** — Dynamic roasts via GROQ API based on usage patterns
+- [x] **Weekly Shame Report** — Beautiful shareable summary card
+- [x] **Streak System** — Track days under your limits
 - [ ] **Friend Roasting** — Share stats and let friends add custom roasts
-- [ ] **Per-App Thresholds** — Different limits for different apps
+- [x] **Per-App Thresholds** — Different limits for different apps
 - [ ] **iOS Version** — Screen Time extension (limited)
 
 ---
