@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.0.0] - 2026-05-07
+
+### Added
+- **Streak System**: Integrated a robust local streak tracking system that rewards consistent usage and punishes failures, with a dashboard badge displaying active streaks.
+- **Weekly Shame Report**: A massive new feature that aggregates 7 days of usage data and generates a brutal 3-sentence summary utilizing the Llama-3.3-70b-versatile model via Groq API.
+- **Share My Shame**: Added an image-capture boundary feature to let users screenshot their Weekly Report and post it to social media via native sharing dialogs.
+- **Custom Thresholds per App**: Added a custom thresholds toggle in the dashboard to set individual time limits per monitored app rather than a global setting.
+
+### Fixed
+- Addressed state management synchronization issues across `SharedPreferences` for per-app thresholds by updating to `FutureProvider.family`.
+
+---
+
 ## [1.0.2] - 2026-05-06
 
 ### Changed
