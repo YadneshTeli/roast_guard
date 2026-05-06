@@ -127,18 +127,18 @@ class GroqService {
 
     switch (intensity) {
       case RoastIntensity.gentle:
-        return base +
+        return '$base'
             'Keep the tone lighthearted, sarcastic, and mildly judging. '
-                'Do not be overly mean.';
+            'Do not be overly mean.';
       case RoastIntensity.medium:
-        return base +
+        return '$base'
             'Be firm and shaming. Make them feel slightly embarrassed for '
-                'wasting their precious time.';
+            'wasting their precious time.';
       case RoastIntensity.brutal:
-        return base +
+        return '$base'
             'Go absolutely nuclear. Destroy their ego. Be extremely savage, '
-                'insulting their life choices and potential without holding back. '
-                'Just raw, witty, brutal truth.';
+            'insulting their life choices and potential without holding back. '
+            'Just raw, witty, brutal truth.';
     }
   }
 
