@@ -55,10 +55,12 @@ class _WeeklyReportScreenState extends ConsumerState<WeeklyReportScreen> {
       final file = File(imagePath);
       await file.writeAsBytes(pngBytes);
 
-      // ignore: deprecated_member_use
-      await Share.shareXFiles([
-        XFile(imagePath),
-      ], text: 'My weekly Doom Roast summary. 💀🔥');
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(imagePath)],
+          text: 'My weekly Doom Roast summary. 💀🔥',
+        ),
+      );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
