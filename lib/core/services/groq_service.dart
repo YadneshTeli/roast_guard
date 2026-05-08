@@ -17,22 +17,24 @@ class GroqService {
   static const _baseUrl = 'https://api.groq.com/openai/v1/chat/completions';
   static const _model = 'llama-3.1-8b-instant';
 
-  static final _dio = Dio(
-    BaseOptions(
-      connectTimeout: const Duration(seconds: 8),
-      receiveTimeout: const Duration(seconds: 10),
-    ),
-  )..interceptors.add(
-      PrettyDioLogger(
-        requestHeader: true,
-        requestBody: true,
-        responseBody: true,
-        responseHeader: false,
-        error: true,
-        compact: true,
-        maxWidth: 90,
-      ),
-    );
+  static final _dio =
+      Dio(
+          BaseOptions(
+            connectTimeout: const Duration(seconds: 8),
+            receiveTimeout: const Duration(seconds: 10),
+          ),
+        )
+        ..interceptors.add(
+          PrettyDioLogger(
+            requestHeader: true,
+            requestBody: true,
+            responseBody: true,
+            responseHeader: false,
+            error: true,
+            compact: true,
+            maxWidth: 90,
+          ),
+        );
 
   static final _fallbacks = <String, List<String>>{
     'com.instagram.android': [
@@ -173,13 +175,62 @@ class GroqService {
     }
   }
 
+  /// Fetches a single AI roast for [packageName] and caches it into
+  /// SharedPreferences. Unlike [prefetchRoasts], this always fetches
+  /// (no skip-if-exists check) because the cache was just consumed.
+  /// Used by the background worker and onResume handler after an overlay
+  /// dismissal to replenish the cache for that specific app.
+  static Future<void> prefetchSingleRoast(
+    String packageName,
+    RoastIntensity intensity,
+  ) async {
+    final apiKey = dotenv.env['GROQ_API'];
+    if (apiKey == null || apiKey.isEmpty) return;
+
+    final appName = AppPackages.targets[packageName]?.name ?? 'social media';
+
+    try {
+      final response = await _dio.post<Map<String, dynamic>>(
+        _baseUrl,
+        options: Options(
+          headers: {
+            HttpHeaders.authorizationHeader: 'Bearer $apiKey',
+            HttpHeaders.contentTypeHeader: 'application/json',
+          },
+        ),
+        data: {
+          'model': _model,
+          'messages': [
+            {'role': 'system', 'content': _getSystemPrompt(intensity)},
+            {
+              'role': 'user',
+              'content':
+                  'Write ONE brutal roast (2 sentences max) for someone '
+                  'who spends too much time on $appName. Be sharp, witty, specific.',
+            },
+          ],
+          'temperature': 0.95,
+          'max_tokens': 80,
+        },
+      );
+
+      final content =
+          response.data?['choices']?[0]?['message']?['content'] as String?;
+      if (content != null && content.trim().isNotEmpty) {
+        final prefs = await _getPrefs();
+        await prefs.setString('cached_roast_$packageName', content.trim());
+      }
+    } catch (_) {
+      // Overlay will use static fallback — that is fine
+    }
+  }
+
   // Lazily fetched SharedPreferences instance
   static SharedPreferences? _prefs;
   static Future<SharedPreferences> _getPrefs() async {
     _prefs ??= await SharedPreferences.getInstance();
     return _prefs!;
   }
-
 
   static String _fallback(String packageName, String timeStr) {
     final list =

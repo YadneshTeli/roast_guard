@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.0.1] - 2026-05-08
+
+### Changed
+- **Zero-Latency AI Overlays**: Completely re-architected the AI pipeline to use a proactive pre-fetch strategy instead of reactive on-resume fetching, guaranteeing AI-generated roasts are ready instantly when the overlay triggers.
+- **Battery Optimization Bypass**: Added a "Background Activity" permission tile in the onboarding flow to disable Android battery optimizations, ensuring the background WorkManager task runs reliably.
+- **State Management Consistency**: Refactored `RoastGuardApp` to `ConsumerStatefulWidget` to maintain cross-isolate SharedPreferences synchronization and strict Riverpod alignment.
+
+### Fixed
+- Resolved cross-process caching staleness by forcing Flutter to reload the underlying `SharedPreferences` disk file upon app resume and background isolate execution.
+- Removed redundant state writes in the Kotlin `OverlayService` to establish `ForegroundMonitorService` as the single source of truth for triggering pre-fetches.
+
+---
+
 ## [2.0.0] - 2026-05-07
 
 ### Added

@@ -166,6 +166,10 @@ class ForegroundMonitorService : Service() {
         getSharedPreferences("FlutterSharedPreferences", MODE_PRIVATE)
             .edit()
             .putString("flutter.last_broken_date", todayStr)
+            // Signal Flutter to prefetch the NEXT roast. Two consumers:
+            // 1. AppLifecycleListener.onResume (immediate, if app is opened)
+            // 2. Periodic WorkManager task (background, ~15 min interval)
+            .putString(OverlayService.KEY_PREFETCH_PENDING, packageName)
             .apply()
 
         val intent = Intent(this, OverlayService::class.java).apply {

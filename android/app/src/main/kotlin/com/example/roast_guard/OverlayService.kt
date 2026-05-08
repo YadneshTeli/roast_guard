@@ -18,6 +18,10 @@ class OverlayService : Service() {
         // instance, windowManager?.addView() would throw BadTokenException.
         @Volatile
         var isShowing: Boolean = false
+
+        // SharedPreferences key Flutter reads on resume to trigger a roast prefetch.
+        // Value is the package name that needs a fresh roast cached.
+        const val KEY_PREFETCH_PENDING = "flutter.roast_prefetch_pending"
     }
 
     private var windowManager: WindowManager? = null
@@ -56,7 +60,7 @@ class OverlayService : Service() {
         val cachedRoast = flutterPrefs.getString(cacheKey, null)
 
         roastText?.text = if (!cachedRoast.isNullOrBlank()) {
-            // Consume the cached roast so Flutter will refresh it next app open
+            // Consume the cached roast so the next overlay gets a fresh one
             flutterPrefs.edit().remove(cacheKey).apply()
             cachedRoast
         } else {
@@ -87,7 +91,7 @@ class OverlayService : Service() {
         timerRunnable = runnable
         handler.postDelayed(runnable, 1000)
 
-        dismissBtn?.setOnClickListener { removeOverlay() }
+        dismissBtn?.setOnClickListener { removeOverlay(packageName) }
 
         val params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.MATCH_PARENT,
@@ -100,12 +104,18 @@ class OverlayService : Service() {
 
         windowManager?.addView(overlayView, params)
     }
+
     private fun getRoastForPackage(packageName: String, totalMs: Long): String {
         val minutes = totalMs / 60_000
         return "$minutes mins wasted. Your future self is already disappointed."
     }
 
-    private fun removeOverlay() {
+    /**
+     * Removes the overlay UI and updates the grace period.
+     * The prefetch flag was already written by ForegroundMonitorService.triggerRoast()
+     * before the overlay started — no need to write it again here.
+     */
+    private fun removeOverlay(packageName: String) {
         // Cancel pending timer callbacks BEFORE detaching the view
         timerRunnable?.let { handler.removeCallbacks(it) }
         timerRunnable = null
@@ -119,7 +129,7 @@ class OverlayService : Service() {
         val nextAllowedTime = System.currentTimeMillis() + (gracePeriodSeconds * 1000L)
         getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
             .edit()
-            .putLong("next_allowed_roast_time", nextAllowedTime)
+            .putLong("flutter.next_allowed_roast_time", nextAllowedTime)
             .apply()
 
         // Service intentionally kept alive (no stopSelf) to avoid the race where

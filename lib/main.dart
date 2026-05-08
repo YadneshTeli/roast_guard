@@ -5,11 +5,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:workmanager/workmanager.dart';
 import 'features/onboarding/permission_screen.dart';
 import 'features/dashboard/dashboard_screen.dart';
 import 'features/settings/settings_screen.dart';
 import 'features/reports/weekly_report_screen.dart';
 import 'core/services/groq_service.dart';
+import 'core/services/background_prefetch.dart';
 import 'providers/config_provider.dart';
 
 void main() async {
@@ -54,6 +56,20 @@ void main() async {
     await prefs.setString('groq_api_key', groqKey);
   }
 
+  // Initialise WorkManager for background roast prefetch tasks
+  await Workmanager().initialize(callbackDispatcher);
+
+  // Register a periodic background task that checks the prefetch flag
+  // and fetches a fresh roast even if the user never opens the app.
+  // Android enforces a 15-minute minimum interval for periodic tasks.
+  await Workmanager().registerPeriodicTask(
+    'periodicRoastPrefetch',
+    kPrefetchTaskName,
+    frequency: const Duration(minutes: 15),
+    constraints: Constraints(networkType: NetworkType.connected),
+    existingWorkPolicy: ExistingPeriodicWorkPolicy.keep,
+  );
+
   // Pre-fetch AI roasts per app in background — OverlayService reads from cache
   final intensityIndex = prefs.getInt('roast_intensity') ?? 1;
   final intensity = RoastIntensity.values[intensityIndex.clamp(0, 2)];
@@ -86,13 +102,55 @@ GoRouter _buildRouter(bool skipOnboarding) => GoRouter(
 // App
 // ---------------------------------------------------------------------------
 
-class RoastGuardApp extends StatelessWidget {
+class RoastGuardApp extends ConsumerStatefulWidget {
   final bool skipOnboarding;
   const RoastGuardApp({super.key, required this.skipOnboarding});
 
   @override
+  ConsumerState<RoastGuardApp> createState() => _RoastGuardAppState();
+}
+
+class _RoastGuardAppState extends ConsumerState<RoastGuardApp> {
+  late final AppLifecycleListener _lifecycleListener;
+
+  @override
+  void initState() {
+    super.initState();
+    _lifecycleListener = AppLifecycleListener(onResume: _onAppResumed);
+  }
+
+  /// Called every time the app returns to the foreground.
+  /// Checks whether ForegroundMonitorService left a pending-prefetch flag
+  /// and, if so, fetches a fresh roast for that specific package.
+  Future<void> _onAppResumed() async {
+    final prefs = await ref.read(sharedPreferencesProvider.future);
+    
+    // IMPORTANT: Reload from disk because the Kotlin native service 
+    // modifies this flag in the background while the Flutter app is asleep.
+    await prefs.reload();
+    
+    final pendingPackage = prefs.getString('roast_prefetch_pending');
+    if (pendingPackage == null || pendingPackage.isEmpty) return;
+
+    // Clear the flag immediately so a repeated resume doesn't double-fetch.
+    await prefs.remove('roast_prefetch_pending');
+
+    final intensityIndex = prefs.getInt('roast_intensity') ?? 1;
+    final intensity = RoastIntensity.values[intensityIndex.clamp(0, 2)];
+
+    // Targeted fetch — only the package whose cache was just consumed
+    GroqService.prefetchSingleRoast(pendingPackage, intensity);
+  }
+
+  @override
+  void dispose() {
+    _lifecycleListener.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final router = _buildRouter(skipOnboarding);
+    final router = _buildRouter(widget.skipOnboarding);
 
     return WithForegroundTask(
       child: MaterialApp.router(

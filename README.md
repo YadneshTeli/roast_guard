@@ -45,7 +45,9 @@ roast_guard/
 │   │   ├── constants/app_packages.dart # Tracked app metadata
 │   │   ├── services/
 │   │   │   ├── usage_service.dart      # MethodChannel wrapper
-│   │   │   └── roast_engine.dart       # Roast message generator
+│   │   │   ├── roast_engine.dart       # Roast message generator
+│   │   │   ├── groq_service.dart       # GROQ API + SharedPreferences cache
+│   │   │   └── background_prefetch.dart# WorkManager callback dispatcher
 │   │   └── utils/duration_formatter.dart
 │   ├── features/
 │   │   ├── onboarding/permission_screen.dart
@@ -70,7 +72,7 @@ roast_guard/
 | Framework | Flutter 3.38+ |
 | State Management | Riverpod 3.x |
 | Native Bridge | Kotlin + MethodChannel |
-| Background Service | Android Foreground Service |
+| Background Service | Android Foreground Service + WorkManager |
 | Overlay | SYSTEM_ALERT_WINDOW |
 | Usage Tracking | Android UsageStatsManager |
 | Storage | SharedPreferences |
@@ -88,6 +90,7 @@ roast_guard/
 | `FOREGROUND_SERVICE_SPECIAL_USE` | Required for specialUse service type |
 | `RECEIVE_BOOT_COMPLETED` | Restart service on reboot |
 | `POST_NOTIFICATIONS` | Show monitoring notification |
+| `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` | Ensure background WorkManager reliability |
 
 ---
 
@@ -117,8 +120,9 @@ flutter run
 
 1. Grant **Usage Access** permission (redirects to Android Settings)
 2. Grant **Display Over Apps** permission
-3. Tap **"Start Roasting Me"**
-4. Open Instagram and wait... 🔥
+3. Grant **Background Activity** permission (Battery Optimization bypass)
+4. Tap **"Start Roasting Me"**
+5. Open Instagram and wait... 🔥
 
 ---
 

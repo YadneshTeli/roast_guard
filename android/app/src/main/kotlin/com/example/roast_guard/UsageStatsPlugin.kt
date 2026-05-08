@@ -22,6 +22,8 @@ class UsageStatsPlugin(private val context: Context) : MethodChannel.MethodCallH
             "requestUsagePermission" -> requestUsagePermission(result)
             "hasOverlayPermission" -> result.success(Settings.canDrawOverlays(context))
             "requestOverlayPermission" -> requestOverlayPermission(result)
+            "isBatteryOptimized" -> result.success(isBatteryOptimized())
+            "requestBatteryOptimizationBypass" -> requestBatteryOptimizationBypass(result)
             "getUsageStats" -> getUsageStats(call, result)
             "getForegroundApp" -> result.success(getForegroundApp())
             "startMonitorService" -> startMonitorService(result)
@@ -103,6 +105,24 @@ class UsageStatsPlugin(private val context: Context) : MethodChannel.MethodCallH
     private fun stopMonitorService(result: MethodChannel.Result) {
         val intent = Intent(context, ForegroundMonitorService::class.java)
         context.stopService(intent)
+        result.success(null)
+    }
+
+    /// Returns true if battery optimization is DISABLED for this app
+    /// (i.e. the app is already whitelisted / unrestricted).
+    private fun isBatteryOptimized(): Boolean {
+        val pm = context.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
+        return pm.isIgnoringBatteryOptimizations(context.packageName)
+    }
+
+    /// Prompts the user with the system dialog to disable battery optimization
+    /// for this app. The dialog is shown by the OS — no custom UI needed.
+    private fun requestBatteryOptimizationBypass(result: MethodChannel.Result) {
+        val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+            data = Uri.parse("package:${context.packageName}")
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+        context.startActivity(intent)
         result.success(null)
     }
 }

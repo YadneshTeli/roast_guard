@@ -59,6 +59,16 @@ class UsageService {
       await _channel.invokeMethod('stopMonitorService');
     } catch (_) {}
   }
+
+  /// Returns true if battery optimization is already disabled for this app.
+  Future<bool> isBatteryOptimized() async {
+    return await _channel.invokeMethod<bool>('isBatteryOptimized') ?? false;
+  }
+
+  /// Prompts the system dialog to disable battery optimization for this app.
+  Future<void> requestBatteryOptimizationBypass() async {
+    await _channel.invokeMethod('requestBatteryOptimizationBypass');
+  }
 }
 
 /// Represents usage stats for a single app.

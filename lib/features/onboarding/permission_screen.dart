@@ -17,6 +17,7 @@ class _PermissionScreenState extends ConsumerState<PermissionScreen>
   final _usageService = UsageService();
   bool _hasUsage = false;
   bool _hasOverlay = false;
+  bool _hasBattery = false;
 
   @override
   void initState() {
@@ -43,10 +44,12 @@ class _PermissionScreenState extends ConsumerState<PermissionScreen>
   Future<void> _checkPermissions() async {
     final usage = await _usageService.hasUsagePermission();
     final overlay = await _usageService.hasOverlayPermission();
+    final battery = await _usageService.isBatteryOptimized();
     if (mounted) {
       setState(() {
         _hasUsage = usage;
         _hasOverlay = overlay;
+        _hasBattery = battery;
       });
     }
   }
@@ -120,12 +123,22 @@ class _PermissionScreenState extends ConsumerState<PermissionScreen>
                   await _usageService.requestOverlayPermission();
                 },
               ),
+              const SizedBox(height: 16),
+              _PermissionTile(
+                icon: '🔋',
+                title: 'Background Activity',
+                subtitle: 'Keep roasts coming even when the app is closed',
+                granted: _hasBattery,
+                onTap: () async {
+                  await _usageService.requestBatteryOptimizationBypass();
+                },
+              ),
               const Spacer(),
               AnimatedOpacity(
-                opacity: (_hasUsage && _hasOverlay) ? 1.0 : 0.0,
+                opacity: (_hasUsage && _hasOverlay && _hasBattery) ? 1.0 : 0.0,
                 duration: const Duration(milliseconds: 400),
                 child: AnimatedSlide(
-                  offset: (_hasUsage && _hasOverlay)
+                  offset: (_hasUsage && _hasOverlay && _hasBattery)
                       ? Offset.zero
                       : const Offset(0, 0.3),
                   duration: const Duration(milliseconds: 400),
@@ -133,7 +146,7 @@ class _PermissionScreenState extends ConsumerState<PermissionScreen>
                   child: SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: (_hasUsage && _hasOverlay)
+                      onPressed: (_hasUsage && _hasOverlay && _hasBattery)
                           ? () async {
                               // Request notification permission for foreground task (Android 13+)
                               await _requestPermissions();
