@@ -20,7 +20,7 @@ class ForegroundMonitorService : Service() {
     private val handler = Handler(Looper.getMainLooper())
     private val pollInterval = 15_000L // 15 seconds for faster detection
 
-    private val targetApps = setOf(
+    private val defaultTargetApps = setOf(
         "com.instagram.android",
         "com.twitter.android",
         "com.facebook.katana",
@@ -29,6 +29,38 @@ class ForegroundMonitorService : Service() {
         "com.reddit.frontpage",
         "com.snapchat.android"
     )
+
+    private fun getTargetApps(): Set<String> {
+        val flutterPrefs = getSharedPreferences("FlutterSharedPreferences", MODE_PRIVATE)
+        try {
+            val set = flutterPrefs.getStringSet("flutter.tracked_packages", null)
+            if (set != null) {
+                return set
+            }
+        } catch (e: ClassCastException) {
+            // Key is stored as a String (JSON list with base64 prefix)
+        }
+
+        val rawString = flutterPrefs.getString("flutter.tracked_packages", null)
+        if (rawString != null) {
+            try {
+                var jsonStr = rawString
+                val index = jsonStr.indexOf("[")
+                if (index != -1) {
+                    jsonStr = jsonStr.substring(index)
+                }
+                val jsonArray = org.json.JSONArray(jsonStr)
+                val resultSet = mutableSetOf<String>()
+                for (i in 0 until jsonArray.length()) {
+                    resultSet.add(jsonArray.getString(i))
+                }
+                return resultSet
+            } catch (e: Exception) {
+                Log.e(TAG, "Error parsing tracked_packages JSON string", e)
+            }
+        }
+        return defaultTargetApps
+    }
 
     private var lastResetDay = -1
 
@@ -62,14 +94,30 @@ class ForegroundMonitorService : Service() {
      * and widen to Long — using getLong would return the default on some devices
      * because the stored type tag is INT, not LONG.
      */
+    private fun getPrefsIntOrLong(prefs: android.content.SharedPreferences, key: String, defaultValue: Int): Int {
+        try {
+            return prefs.getInt(key, defaultValue)
+        } catch (e: ClassCastException) {
+            try {
+                return prefs.getLong(key, defaultValue.toLong()).toInt()
+            } catch (e2: ClassCastException) {
+                val str = prefs.getString(key, null)
+                if (str != null) {
+                    return str.toIntOrNull() ?: defaultValue
+                }
+            }
+        }
+        return defaultValue
+    }
+
     private fun getThresholdMs(currentApp: String): Long {
         val flutterPrefs = getSharedPreferences("FlutterSharedPreferences", MODE_PRIVATE)
         val useCustom = flutterPrefs.getBoolean("flutter.use_custom_thresholds", false)
         val minutes = if (useCustom) {
-            val custom = flutterPrefs.getInt("flutter.custom_threshold_${currentApp}_minutes", -1)
-            if (custom != -1) custom.toLong() else flutterPrefs.getInt("flutter.threshold_minutes", 10).toLong()
+            val custom = getPrefsIntOrLong(flutterPrefs, "flutter.custom_threshold_${currentApp}_minutes", -1)
+            if (custom != -1) custom.toLong() else getPrefsIntOrLong(flutterPrefs, "flutter.threshold_minutes", 10).toLong()
         } else {
-            flutterPrefs.getInt("flutter.threshold_minutes", 10).toLong()
+            getPrefsIntOrLong(flutterPrefs, "flutter.threshold_minutes", 10).toLong()
         }
         Log.d(TAG, "Threshold for $currentApp: ${minutes}m (${minutes * 60 * 1000}ms)")
         return minutes * 60 * 1000L
@@ -100,7 +148,7 @@ class ForegroundMonitorService : Service() {
         }
 
         val currentApp = getCurrentForegroundApp()
-        if (currentApp == null || currentApp !in targetApps) {
+        if (currentApp == null || currentApp !in getTargetApps()) {
             return
         }
 

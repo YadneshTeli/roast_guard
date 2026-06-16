@@ -26,6 +26,7 @@ class UsageStatsPlugin(private val context: Context) : MethodChannel.MethodCallH
             "requestBatteryOptimizationBypass" -> requestBatteryOptimizationBypass(result)
             "getUsageStats" -> getUsageStats(call, result)
             "getForegroundApp" -> result.success(getForegroundApp())
+            "getInstalledApps" -> getInstalledApps(result)
             "startMonitorService" -> startMonitorService(result)
             "stopMonitorService" -> stopMonitorService(result)
             else -> result.notImplemented()
@@ -124,5 +125,27 @@ class UsageStatsPlugin(private val context: Context) : MethodChannel.MethodCallH
         }
         context.startActivity(intent)
         result.success(null)
+    }
+
+    private fun getInstalledApps(result: MethodChannel.Result) {
+        val pm = context.packageManager
+        val packages = pm.getInstalledPackages(0)
+        val resultList = packages
+            .filter {
+                val appInfo = it.applicationInfo
+                appInfo != null && (
+                    (appInfo.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) == 0 ||
+                    (appInfo.flags and android.content.pm.ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0
+                )
+            }
+            .map {
+                mapOf(
+                    "packageName" to it.packageName,
+                    "name" to (it.applicationInfo?.loadLabel(pm)?.toString() ?: it.packageName)
+                )
+            }
+            .distinctBy { it["packageName"] }
+            .sortedBy { (it["name"] ?: "").lowercase() }
+        result.success(resultList)
     }
 }

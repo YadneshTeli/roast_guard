@@ -4,65 +4,71 @@
     android:layout_height="match_parent"
     android:background="#E6000000">
 
-    <LinearLayout
+    <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center"
-        android:orientation="vertical"
-        android:padding="32dp">
+        android:layout_height="match_parent"
+        android:fillViewport="true">
 
-        <TextView
-            android:id="@+id/roast_emoji"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:text="🔥"
-            android:textSize="72sp" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:layout_marginTop="8dp"
-            android:text="RoastGuard"
-            android:textColor="#FF4444"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            android:letterSpacing="0.15" />
-
-        <TextView
-            android:id="@+id/roast_text"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="32dp"
             android:gravity="center"
-            android:textColor="#FFFFFF"
-            android:textSize="22sp"
-            android:textStyle="bold"
-            android:lineSpacingExtra="6dp" />
+            android:orientation="vertical"
+            android:padding="32dp">
 
-        <TextView
-            android:id="@+id/timer_text"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
-            android:gravity="center"
-            android:textColor="#FFAA00"
-            android:textSize="14sp"
-            android:fontFamily="monospace" />
+            <TextView
+                android:id="@+id/roast_emoji"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:text="🔥"
+                android:textSize="72sp" />
 
-        <Button
-            android:id="@+id/dismiss_btn"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:layout_marginTop="32dp"
-            android:text="Ok fine, I'll be productive"
-            android:backgroundTint="#FF4444"
-            android:textColor="#FFFFFF"
-            android:textSize="14sp"
-            android:paddingHorizontal="32dp"
-            android:paddingVertical="14dp" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:layout_marginTop="8dp"
+                android:text="RoastGuard"
+                android:textColor="#FF4444"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.15" />
 
-    </LinearLayout>
+            <TextView
+                android:id="@+id/roast_text"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="32dp"
+                android:gravity="center"
+                android:textColor="#FFFFFF"
+                android:textSize="22sp"
+                android:textStyle="bold"
+                android:lineSpacingExtra="6dp" />
+
+            <TextView
+                android:id="@+id/timer_text"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:gravity="center"
+                android:textColor="#FFAA00"
+                android:textSize="14sp"
+                android:fontFamily="monospace" />
+
+            <Button
+                android:id="@+id/dismiss_btn"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:layout_marginTop="32dp"
+                android:text="Ok fine, I'll be productive"
+                android:backgroundTint="#FF4444"
+                android:textColor="#FFFFFF"
+                android:textSize="14sp"
+                android:paddingHorizontal="32dp"
+                android:paddingVertical="14dp" />
+
+        </LinearLayout>
+    </ScrollView>
 </FrameLayout>
