@@ -36,6 +36,11 @@ class UsageService {
     return await _channel.invokeMethod<String>('getForegroundApp');
   }
 
+  Future<List<Map<String, String>>> getInstalledApps() async {
+    final raw = await _channel.invokeListMethod<Map>('getInstalledApps');
+    return raw?.map((e) => Map<String, String>.from(e)).toList() ?? [];
+  }
+
   /// Start the native foreground monitoring service.
   /// Uses FlutterForegroundTask for proper lifecycle management on the Dart side,
   /// then delegates to the existing Kotlin ForegroundMonitorService via the channel.

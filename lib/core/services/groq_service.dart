@@ -76,7 +76,7 @@ class GroqService {
     RoastIntensity intensity,
   ) async {
     final timeStr = _formatDuration(time);
-    final appName = AppPackages.targets[packageName]?.name ?? 'social media';
+    final appName = AppPackages.getMeta(packageName).name;
 
     try {
       final apiKey = dotenv.env['GROQ_API'];
@@ -131,9 +131,10 @@ class GroqService {
 
     final prefs = await _getPrefs();
 
-    for (final entry in AppPackages.targets.entries) {
-      final packageName = entry.key;
-      final appName = entry.value.name;
+    final tracked = prefs.getStringList('tracked_packages') ?? AppPackages.targets.keys.toList();
+
+    for (final packageName in tracked) {
+      final appName = AppPackages.getMeta(packageName).name;
 
       // Skip if a cached roast is already waiting (not yet consumed)
       final existing = prefs.getString('cached_roast_$packageName');
@@ -187,7 +188,7 @@ class GroqService {
     final apiKey = dotenv.env['GROQ_API'];
     if (apiKey == null || apiKey.isEmpty) return;
 
-    final appName = AppPackages.targets[packageName]?.name ?? 'social media';
+    final appName = AppPackages.getMeta(packageName).name;
 
     try {
       final response = await _dio.post<Map<String, dynamic>>(
@@ -277,8 +278,7 @@ class GroqService {
 
     final usageSummary = stats
         .map((e) {
-          final appName =
-              AppPackages.targets[e.packageName]?.name ?? e.packageName;
+          final appName = AppPackages.getMeta(e.packageName).name;
           return '$appName: ${_formatDuration(e.totalTime)}';
         })
         .join(', ');

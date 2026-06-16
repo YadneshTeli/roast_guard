@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -147,3 +148,27 @@ final customThresholdProvider = FutureProvider.family<int, String>((
   final prefs = await ref.watch(sharedPreferencesProvider.future);
   return prefs.getInt('custom_threshold_${arg}_minutes') ?? -1;
 });
+
+// ---------------------------------------------------------------------------
+// Theme Mode
+// ---------------------------------------------------------------------------
+
+final themeModeProvider = AsyncNotifierProvider<ThemeModeNotifier, ThemeMode>(
+  ThemeModeNotifier.new,
+);
+
+class ThemeModeNotifier extends AsyncNotifier<ThemeMode> {
+  @override
+  Future<ThemeMode> build() async {
+    final prefs = await ref.watch(sharedPreferencesProvider.future);
+    final index = prefs.getInt('theme_mode') ?? 0; // default is ThemeMode.system
+    return ThemeMode.values[index.clamp(0, 2)];
+  }
+
+  Future<void> setThemeMode(ThemeMode mode) async {
+    state = AsyncData(mode);
+    final prefs = await ref.read(sharedPreferencesProvider.future);
+    await prefs.setInt('theme_mode', mode.index);
+  }
+}
+

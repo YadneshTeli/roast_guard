@@ -39,6 +39,33 @@ class AppPackages {
       color: 0xFFFFFC00,
     ),
   };
+
+  static AppMeta getMeta(String packageName, {String? displayName}) {
+    final meta = targets[packageName];
+    if (meta != null) return meta;
+
+    final name = displayName ?? _cleanPackageName(packageName);
+    // Generate a stable color based on hash of package name
+    final hash = packageName.hashCode;
+    final color = 0xFF000000 | (hash & 0x00FFFFFF);
+
+    return AppMeta(
+      name: name,
+      emoji: '📱',
+      color: color,
+    );
+  }
+
+  static String _cleanPackageName(String pkg) {
+    final parts = pkg.split('.');
+    if (parts.isEmpty) return pkg;
+    final last = parts.last;
+    if (last.isEmpty) return pkg;
+    if (last.length > 1) {
+      return last[0].toUpperCase() + last.substring(1);
+    }
+    return last.toUpperCase();
+  }
 }
 
 class AppMeta {
