@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../../core/services/usage_service.dart';
+import 'view_models/permission_view_model.dart';
 
 class PermissionScreen extends ConsumerStatefulWidget {
   const PermissionScreen({super.key});
@@ -14,16 +12,11 @@ class PermissionScreen extends ConsumerStatefulWidget {
 
 class _PermissionScreenState extends ConsumerState<PermissionScreen>
     with WidgetsBindingObserver {
-  final _usageService = UsageService();
-  bool _hasUsage = false;
-  bool _hasOverlay = false;
-  bool _hasBattery = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _checkPermissions();
   }
 
   @override
@@ -37,156 +30,137 @@ class _PermissionScreenState extends ConsumerState<PermissionScreen>
     if (state == AppLifecycleState.resumed) {
       // Small delay: Android may not have fully committed the grant by the time
       // this callback fires (e.g. user grants and switches back very quickly).
-      Future.delayed(const Duration(milliseconds: 300), _checkPermissions);
-    }
-  }
-
-  Future<void> _checkPermissions() async {
-    final usage = await _usageService.hasUsagePermission();
-    final overlay = await _usageService.hasOverlayPermission();
-    final battery = await _usageService.isBatteryOptimized();
-    if (mounted) {
-      setState(() {
-        _hasUsage = usage;
-        _hasOverlay = overlay;
-        _hasBattery = battery;
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (mounted) {
+          ref.read(permissionViewModelProvider.notifier).checkPermissions();
+        }
       });
     }
   }
 
-  Future<void> _requestPermissions() async {
-    // Request foreground task notification permission (Android 13+)
-    await FlutterForegroundTask.requestNotificationPermission();
-  }
-
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final permissionState = ref.watch(permissionViewModelProvider);
+
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0A0A),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 48),
-              // Animated fire emoji
-              TweenAnimationBuilder<double>(
-                tween: Tween(begin: 0.8, end: 1.0),
-                duration: const Duration(milliseconds: 800),
-                curve: Curves.elasticOut,
-                builder: (context, value, child) =>
-                    Transform.scale(scale: value, child: child),
-                child: const Text('🔥', style: TextStyle(fontSize: 72)),
-              ),
-              const SizedBox(height: 20),
-              ShaderMask(
-                shaderCallback: (bounds) => const LinearGradient(
-                  colors: [Color(0xFFFF4444), Color(0xFFFF8800)],
-                ).createShader(bounds),
-                child: const Text(
-                  'Doom Roast',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 40,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -1,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'We need two permissions to roast you properly.',
-                style: TextStyle(
-                  color: Colors.grey[400],
-                  fontSize: 16,
-                  height: 1.4,
-                ),
-              ),
-              const SizedBox(height: 48),
-              _PermissionTile(
-                icon: '📊',
-                title: 'Usage Access',
-                subtitle: "So we know how long you've been doomscrolling",
-                granted: _hasUsage,
-                onTap: () async {
-                  await _usageService.requestUsagePermission();
-                },
-              ),
-              const SizedBox(height: 16),
-              _PermissionTile(
-                icon: '🪟',
-                title: 'Display Over Apps',
-                subtitle: 'So we can interrupt your scrolling with shame',
-                granted: _hasOverlay,
-                onTap: () async {
-                  await _usageService.requestOverlayPermission();
-                },
-              ),
-              const SizedBox(height: 16),
-              _PermissionTile(
-                icon: '🔋',
-                title: 'Background Activity',
-                subtitle: 'Keep roasts coming even when the app is closed',
-                granted: _hasBattery,
-                onTap: () async {
-                  await _usageService.requestBatteryOptimizationBypass();
-                },
-              ),
-              const Spacer(),
-              AnimatedOpacity(
-                opacity: (_hasUsage && _hasOverlay && _hasBattery) ? 1.0 : 0.0,
-                duration: const Duration(milliseconds: 400),
-                child: AnimatedSlide(
-                  offset: (_hasUsage && _hasOverlay && _hasBattery)
-                      ? Offset.zero
-                      : const Offset(0, 0.3),
-                  duration: const Duration(milliseconds: 400),
-                  curve: Curves.easeOut,
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: (_hasUsage && _hasOverlay && _hasBattery)
-                          ? () async {
-                              // Request notification permission for foreground task (Android 13+)
-                              await _requestPermissions();
-                              await _usageService.startMonitorService();
-                              final prefs =
-                                  await SharedPreferences.getInstance();
-                              await prefs.setBool('onboarding_complete', true);
-                              if (context.mounted) {
-                                context.go('/dashboard');
-                              }
-                            }
-                          : null,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFFF4444),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 18),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        elevation: 8,
-                        shadowColor: const Color(
-                          0xFFFF4444,
-                        ).withValues(alpha: 0.4),
+        child: permissionState.isLoading
+            ? Center(
+                child: CircularProgressIndicator(color: theme.colorScheme.primary),
+              )
+            : Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 48),
+                    // Animated fire emoji
+                    TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0.8, end: 1.0),
+                      duration: const Duration(milliseconds: 800),
+                      curve: Curves.elasticOut,
+                      builder: (context, value, child) =>
+                          Transform.scale(scale: value, child: child),
+                      child: const Text('🔥', style: TextStyle(fontSize: 72)),
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      'Doom Roast',
+                      style: theme.textTheme.displayMedium?.copyWith(
+                        color: theme.colorScheme.primary,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -1,
                       ),
-                      child: const Text(
-                        '🔥 Start Roasting Me',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 0.5,
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'We need permissions to roast you properly.',
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                        height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 48),
+                    _PermissionTile(
+                      icon: '📊',
+                      title: 'Usage Access',
+                      subtitle: "So we know how long you've been doomscrolling",
+                      granted: permissionState.hasUsage,
+                      onTap: () async {
+                        await ref
+                            .read(permissionViewModelProvider.notifier)
+                            .requestUsagePermission();
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    _PermissionTile(
+                      icon: '🪟',
+                      title: 'Display Over Apps',
+                      subtitle: 'So we can interrupt your scrolling with shame',
+                      granted: permissionState.hasOverlay,
+                      onTap: () async {
+                        await ref
+                            .read(permissionViewModelProvider.notifier)
+                            .requestOverlayPermission();
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    _PermissionTile(
+                      icon: '🔋',
+                      title: 'Background Activity',
+                      subtitle: 'Keep roasts coming even when the app is closed',
+                      granted: permissionState.hasBattery,
+                      onTap: () async {
+                        await ref
+                            .read(permissionViewModelProvider.notifier)
+                            .requestBatteryBypass();
+                      },
+                    ),
+                    const Spacer(),
+                    AnimatedOpacity(
+                      opacity: permissionState.allGranted ? 1.0 : 0.0,
+                      duration: const Duration(milliseconds: 400),
+                      child: AnimatedSlide(
+                        offset: permissionState.allGranted
+                            ? Offset.zero
+                            : const Offset(0, 0.3),
+                        duration: const Duration(milliseconds: 400),
+                        curve: Curves.easeOut,
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: FilledButton(
+                            onPressed: permissionState.allGranted
+                                ? () async {
+                                    await ref
+                                        .read(permissionViewModelProvider.notifier)
+                                        .completeOnboarding();
+                                    if (context.mounted) {
+                                      context.go('/dashboard');
+                                    }
+                                  }
+                                : null,
+                            style: FilledButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 18),
+                              elevation: 4,
+                              shadowColor: theme.colorScheme.primary.withValues(alpha: 0.3),
+                            ),
+                            child: const Text(
+                              '🔥 Start Roasting Me',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                  ),
+                    const SizedBox(height: 24),
+                  ],
                 ),
               ),
-              const SizedBox(height: 24),
-            ],
-          ),
-        ),
       ),
     );
   }
@@ -235,6 +209,7 @@ class _PermissionTileState extends State<_PermissionTile>
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return GestureDetector(
       onTapDown: (_) {
         if (!widget.granted) _controller.forward();
@@ -253,24 +228,15 @@ class _PermissionTileState extends State<_PermissionTile>
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             color: widget.granted
-                ? const Color(0xFF0D2818)
-                : const Color(0xFF1A1A1A),
+                ? theme.colorScheme.primaryContainer
+                : theme.colorScheme.surfaceContainerHighest,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: widget.granted
-                  ? const Color(0xFF22C55E)
-                  : Colors.grey[800]!,
-              width: 1.5,
+                  ? theme.colorScheme.primary
+                  : theme.colorScheme.outline,
+              width: widget.granted ? 1.5 : 1,
             ),
-            boxShadow: widget.granted
-                ? [
-                    BoxShadow(
-                      color: const Color(0xFF22C55E).withValues(alpha: 0.15),
-                      blurRadius: 12,
-                      spreadRadius: 1,
-                    ),
-                  ]
-                : [],
           ),
           child: Row(
             children: [
@@ -282,16 +248,21 @@ class _PermissionTileState extends State<_PermissionTile>
                   children: [
                     Text(
                       widget.title,
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        color: widget.granted
+                            ? theme.colorScheme.onPrimaryContainer
+                            : theme.colorScheme.onSurface,
                         fontWeight: FontWeight.bold,
-                        fontSize: 16,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       widget.subtitle,
-                      style: TextStyle(color: Colors.grey[500], fontSize: 13),
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: widget.granted
+                            ? theme.colorScheme.onPrimaryContainer.withValues(alpha: 0.7)
+                            : theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                      ),
                     ),
                   ],
                 ),
@@ -299,16 +270,16 @@ class _PermissionTileState extends State<_PermissionTile>
               AnimatedSwitcher(
                 duration: const Duration(milliseconds: 300),
                 child: widget.granted
-                    ? const Icon(
+                    ? Icon(
                         Icons.check_circle_rounded,
-                        key: ValueKey('check'),
-                        color: Color(0xFF22C55E),
+                        key: const ValueKey('check'),
+                        color: theme.colorScheme.primary,
                         size: 24,
                       )
-                    : const Icon(
+                    : Icon(
                         Icons.arrow_forward_ios_rounded,
-                        key: ValueKey('arrow'),
-                        color: Colors.grey,
+                        key: const ValueKey('arrow'),
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
                         size: 18,
                       ),
               ),

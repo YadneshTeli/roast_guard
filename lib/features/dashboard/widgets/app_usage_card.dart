@@ -4,6 +4,7 @@ import '../../../providers/config_provider.dart';
 import '../../../core/constants/app_packages.dart';
 import '../../../core/services/usage_service.dart';
 import '../../../core/services/roast_engine.dart';
+import '../../settings/view_models/settings_view_model.dart';
 
 class AppUsageCard extends ConsumerWidget {
   final AppUsageStat stat;
@@ -12,10 +13,11 @@ class AppUsageCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final app = AppPackages.targets[stat.packageName];
-    final name = app?.name ?? stat.packageName;
-    final emoji = app?.emoji ?? '📱';
-    final brandColor = Color(app?.color ?? 0xFFFF4444);
+    final theme = Theme.of(context);
+    final app = AppPackages.getMeta(stat.packageName);
+    final name = app.name;
+    final emoji = app.emoji;
+    final brandColor = Color(app.color);
     final timeStr = RoastEngine.formatDuration(stat.totalTime);
 
     // Determine severity
@@ -53,21 +55,20 @@ class AppUsageCard extends ConsumerWidget {
               children: [
                 Text(
                   name,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 15,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    color: theme.colorScheme.onSurface,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 6),
                 // Progress bar
                 ClipRRect(
                   borderRadius: BorderRadius.circular(4),
                   child: LinearProgressIndicator(
                     value: (minutes / 120).clamp(0.0, 1.0),
-                    backgroundColor: Colors.grey[900],
+                    backgroundColor: theme.colorScheme.surface,
                     valueColor: AlwaysStoppedAnimation(severity.color),
-                    minHeight: 4,
+                    minHeight: 5,
                   ),
                 ),
               ],
@@ -81,19 +82,17 @@ class AppUsageCard extends ConsumerWidget {
             children: [
               Text(
                 timeStr,
-                style: TextStyle(
+                style: theme.textTheme.titleMedium?.copyWith(
                   color: severity.color,
                   fontWeight: FontWeight.bold,
-                  fontSize: 16,
                 ),
               ),
               const SizedBox(height: 2),
               Text(
                 severity.label,
-                style: TextStyle(
+                style: theme.textTheme.labelSmall?.copyWith(
                   color: severity.color.withValues(alpha: 0.7),
-                  fontSize: 10,
-                  fontWeight: FontWeight.w500,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             ],
@@ -104,15 +103,7 @@ class AppUsageCard extends ConsumerWidget {
 
     final useCustom = ref.watch(useCustomThresholdsProvider).value ?? false;
     if (!useCustom) {
-      return Container(
-        decoration: BoxDecoration(
-          color: const Color(0xFF141414),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: severity.color.withValues(alpha: 0.25),
-            width: 1,
-          ),
-        ),
+      return Card(
         child: cardContent,
       );
     }
@@ -125,63 +116,44 @@ class AppUsageCard extends ConsumerWidget {
         ? ref.watch(thresholdMinutesProvider).value ?? 10
         : customThresholdAsync.value!;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFF141414),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: severity.color.withValues(alpha: 0.25),
-          width: 1,
-        ),
-      ),
+    return Card(
       child: Column(
         children: [
           cardContent,
-          const Divider(color: Colors.white10, height: 1),
+          Divider(color: theme.colorScheme.outline, height: 1),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Row(
               children: [
-                const Icon(Icons.timer, color: Colors.grey, size: 16),
+                Icon(Icons.timer, color: theme.colorScheme.onSurface.withValues(alpha: 0.6), size: 16),
                 const SizedBox(width: 8),
                 Text(
                   'Limit: $customThreshold min',
-                  style: TextStyle(
-                    color: Colors.grey[400],
-                    fontSize: 12,
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 Expanded(
                   child: SliderTheme(
-                    data: SliderThemeData(
-                      trackHeight: 2,
+                    data: theme.sliderTheme.copyWith(
+                      activeTrackColor: theme.colorScheme.tertiary,
+                      thumbColor: theme.colorScheme.tertiary,
+                      trackHeight: 4,
                       thumbShape: const RoundSliderThumbShape(
                         enabledThumbRadius: 6,
                       ),
                       overlayShape: const RoundSliderOverlayShape(
                         overlayRadius: 12,
                       ),
-                      activeTrackColor: const Color(0xFF8B5CF6),
-                      inactiveTrackColor: Colors.grey[800],
-                      thumbColor: const Color(0xFF8B5CF6),
                     ),
                     child: Slider(
                       value: customThreshold.toDouble(),
                       min: 1,
                       max: 60,
                       divisions: 59,
-                      onChanged: (val) async {
-                        final prefs = await ref.read(
-                          sharedPreferencesProvider.future,
-                        );
-                        await prefs.setInt(
-                          'custom_threshold_${stat.packageName}_minutes',
-                          val.toInt(),
-                        );
-                        ref.invalidate(
-                          customThresholdProvider(stat.packageName),
-                        );
+                      onChanged: (val) {
+                        ref.read(settingsViewModelProvider).setCustomAppThreshold(stat.packageName, val.toInt());
                       },
                     ),
                   ),

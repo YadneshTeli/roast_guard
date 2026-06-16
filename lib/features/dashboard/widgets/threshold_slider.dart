@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../settings/view_models/settings_view_model.dart';
 import '../../../providers/config_provider.dart';
 
 class ThresholdSlider extends ConsumerWidget {
@@ -7,68 +8,55 @@ class ThresholdSlider extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final vm = ref.read(settingsViewModelProvider);
     final thresholdAsync = ref.watch(thresholdMinutesProvider);
     final threshold = thresholdAsync.value ?? 10;
 
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1A1A1A),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey[900]!),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Spam Threshold',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Spam Threshold',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: theme.colorScheme.onSurface,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-              Text(
-                thresholdAsync.isLoading ? '…' : '$threshold mins',
-                style: const TextStyle(
-                  color: Color(0xFFFF8800),
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
+                Text(
+                  thresholdAsync.isLoading ? '…' : '$threshold mins',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: theme.colorScheme.secondary,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Time allowed before the roasting begins',
-            style: TextStyle(color: Colors.grey[500], fontSize: 13),
-          ),
-          const SizedBox(height: 16),
-          SliderTheme(
-            data: SliderThemeData(
-              activeTrackColor: const Color(0xFFFF4444),
-              inactiveTrackColor: Colors.grey[800],
-              thumbColor: const Color(0xFFFF8800),
-              overlayColor: const Color(0xFFFF4444).withValues(alpha: 0.2),
-              trackHeight: 8,
-              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 12),
+              ],
             ),
-            child: Slider(
+            const SizedBox(height: 8),
+            Text(
+              'Time allowed before the roasting begins',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Slider(
               value: threshold.toDouble(),
               min: 1,
               max: 60,
               divisions: 59,
               onChanged: (value) {
-                ref
-                    .read(thresholdMinutesProvider.notifier)
-                    .setThreshold(value.toInt());
+                vm.setThreshold(value.toInt());
               },
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

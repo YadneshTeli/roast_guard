@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../providers/usage_provider.dart';
 import '../../providers/config_provider.dart';
+import '../../providers/usage_provider.dart';
+import '../../providers/streak_provider.dart';
 import '../../core/constants/app_packages.dart';
 import '../../core/services/roast_engine.dart';
 import '../../core/services/groq_service.dart';
@@ -11,7 +12,7 @@ import '../../core/services/usage_service.dart';
 import 'widgets/app_usage_card.dart';
 import 'widgets/roast_intensity_slider.dart';
 import 'widgets/threshold_slider.dart';
-import '../../providers/streak_provider.dart';
+import 'view_models/dashboard_view_model.dart';
 
 // ---------------------------------------------------------------------------
 // GROQ roast provider — cached per (packageName, totalMinutes) pair
@@ -57,24 +58,27 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final vm = ref.read(dashboardViewModelProvider);
     final usageAsync = ref.watch(usageStatsProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0A0A),
       body: SafeArea(
         child: usageAsync.when(
-          loading: () => const Center(
+          loading: () => Center(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 CircularProgressIndicator(
-                  color: Color(0xFFFF4444),
+                  color: theme.colorScheme.primary,
                   strokeWidth: 3,
                 ),
-                SizedBox(height: 16),
+                const SizedBox(height: 16),
                 Text(
                   'Calculating your shame...',
-                  style: TextStyle(color: Colors.grey, fontSize: 14),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                  ),
                 ),
               ],
             ),
@@ -89,15 +93,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   const SizedBox(height: 16),
                   Text(
                     'Error: $e',
-                    style: const TextStyle(color: Colors.white70),
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                    ),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () => ref.invalidate(usageStatsProvider),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFFF4444),
-                    ),
+                  FilledButton(
+                    onPressed: () => vm.refreshUsage(),
                     child: const Text('Retry'),
                   ),
                 ],
@@ -105,12 +108,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             ),
           ),
           data: (stats) {
-            final filtered =
-                stats
-                    .where(
-                      (s) => AppPackages.targets.containsKey(s.packageName),
-                    )
-                    .toList()
+            final filtered = stats.toList()
                   ..sort((a, b) => b.totalTime.compareTo(a.totalTime));
 
             final totalMs = filtered.fold<int>(
@@ -120,9 +118,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             final totalDuration = Duration(milliseconds: totalMs);
 
             return RefreshIndicator(
-              color: const Color(0xFFFF4444),
-              backgroundColor: const Color(0xFF1A1A1A),
-              onRefresh: () async => ref.invalidate(usageStatsProvider),
+              color: theme.colorScheme.primary,
+              backgroundColor: theme.colorScheme.surfaceContainerHighest,
+              onRefresh: () async => vm.refreshUsage(),
               child: CustomScrollView(
                 physics: const AlwaysScrollableScrollPhysics(
                   parent: BouncingScrollPhysics(),
@@ -131,27 +129,56 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   SliverAppBar(
                     backgroundColor: Colors.transparent,
                     floating: true,
-                    title: ShaderMask(
-                      shaderCallback: (bounds) => const LinearGradient(
-                        colors: [Color(0xFFFF4444), Color(0xFFFF8800)],
-                      ).createShader(bounds),
-                      child: const Text(
-                        '🔥 Doom Roast',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 24,
-                        ),
+                    scrolledUnderElevation: 0,
+                    leading: IconButton(
+                      icon: Icon(
+                        Icons.settings_rounded,
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                      ),
+                      onPressed: () => context.push('/settings'),
+                    ),
+                    title: Text(
+                      '🔥 Doom Roast',
+                      style: theme.textTheme.headlineMedium?.copyWith(
+                        color: theme.colorScheme.primary,
+                        fontWeight: FontWeight.w900,
                       ),
                     ),
                     actions: [
                       const _StreakBadge(),
-                      IconButton(
-                        icon: const Icon(
-                          Icons.settings_rounded,
-                          color: Colors.white70,
-                        ),
-                        onPressed: () => context.push('/settings'),
+                      Consumer(
+                        builder: (context, ref, child) {
+                          final currentMode = ref.watch(themeModeProvider).value ?? ThemeMode.system;
+                          IconData iconData;
+                          String tooltip;
+                          switch (currentMode) {
+                            case ThemeMode.system:
+                              iconData = Icons.brightness_auto_rounded;
+                              tooltip = 'Theme: System';
+                              break;
+                            case ThemeMode.light:
+                              iconData = Icons.light_mode_rounded;
+                              tooltip = 'Theme: Light';
+                              break;
+                            case ThemeMode.dark:
+                              iconData = Icons.dark_mode_rounded;
+                              tooltip = 'Theme: Dark';
+                              break;
+                          }
+                          return IconButton(
+                            icon: Icon(iconData),
+                            tooltip: tooltip,
+                            color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                            onPressed: () {
+                              final nextMode = currentMode == ThemeMode.system
+                                  ? ThemeMode.light
+                                  : currentMode == ThemeMode.light
+                                      ? ThemeMode.dark
+                                      : ThemeMode.system;
+                              ref.read(themeModeProvider.notifier).setThemeMode(nextMode);
+                            },
+                          );
+                        },
                       ),
                     ],
                   ),
@@ -173,31 +200,27 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         ],
                         Row(
                           children: [
-                            const Text(
+                            Text(
                               "Today's Damage",
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 20,
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                color: theme.colorScheme.onSurface,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
                             const SizedBox(width: 8),
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 3,
+                                horizontal: 10,
+                                vertical: 4,
                               ),
                               decoration: BoxDecoration(
-                                color: const Color(
-                                  0xFFFF4444,
-                                ).withValues(alpha: 0.15),
+                                color: theme.colorScheme.primary.withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text(
                                 '${filtered.length} apps',
-                                style: const TextStyle(
-                                  color: Color(0xFFFF4444),
-                                  fontSize: 12,
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: theme.colorScheme.primary,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -205,29 +228,19 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             const Spacer(),
                             TextButton.icon(
                               onPressed: () => context.push('/weekly_report'),
-                              icon: const Icon(
-                                Icons.calendar_month,
-                                color: Color(0xFFFF8800),
-                                size: 16,
-                              ),
-                              label: const Text(
-                                'Weekly',
-                                style: TextStyle(
-                                  color: Color(0xFFFF8800),
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
+                              icon: const Icon(Icons.analytics_rounded, size: 16),
+                              label: const Text('Weekly'),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 14),
+                        const SizedBox(height: 12),
                         if (filtered.isEmpty)
                           Container(
                             padding: const EdgeInsets.all(32),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF1A1A1A),
+                              color: theme.colorScheme.surfaceContainerHighest,
                               borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: Colors.grey[900]!),
+                              border: Border.all(color: theme.colorScheme.outline),
                             ),
                             child: Column(
                               children: [
@@ -236,20 +249,18 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                   style: TextStyle(fontSize: 48),
                                 ),
                                 const SizedBox(height: 12),
-                                const Text(
+                                Text(
                                   'No doom-scrolling detected!',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 16,
+                                  style: theme.textTheme.titleMedium?.copyWith(
+                                    color: theme.colorScheme.onSurface,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
                                   "Either you're a saint or the tracking just started.",
-                                  style: TextStyle(
-                                    color: Colors.grey[500],
-                                    fontSize: 13,
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
                                   ),
                                   textAlign: TextAlign.center,
                                 ),
@@ -308,68 +319,60 @@ class _ShameSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF8B0000), Color(0xFF2D0000), Color(0xFF0A0A0A)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          stops: [0.0, 0.5, 1.0],
+    final theme = Theme.of(context);
+    return Card(
+      elevation: 0,
+      color: theme.colorScheme.primaryContainer,
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text(
+                  'Today you wasted',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onPrimaryContainer.withValues(alpha: 0.7),
+                  ),
+                ),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.onPrimaryContainer.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    '$appCount apps tracked',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.onPrimaryContainer.withValues(alpha: 0.8),
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              RoastEngine.formatDuration(totalDuration),
+              style: theme.textTheme.displayLarge?.copyWith(
+                color: theme.colorScheme.onPrimaryContainer,
+                fontWeight: FontWeight.w900,
+                letterSpacing: -2,
+                height: 1.1,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'on apps that bring you no joy or income.',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onPrimaryContainer.withValues(alpha: 0.7),
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ],
         ),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFFFF4444).withValues(alpha: 0.15),
-            blurRadius: 24,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Text(
-                'Today you wasted',
-                style: TextStyle(color: Colors.white60, fontSize: 14),
-              ),
-              const Spacer(),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  '$appCount apps tracked',
-                  style: const TextStyle(color: Colors.white54, fontSize: 11),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            RoastEngine.formatDuration(totalDuration),
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 52,
-              fontWeight: FontWeight.w900,
-              letterSpacing: -2,
-              height: 1.1,
-            ),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'on apps that bring you no joy or income.',
-            style: TextStyle(
-              color: Colors.white54,
-              fontSize: 13,
-              fontStyle: FontStyle.italic,
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -386,6 +389,7 @@ class _QuickRoastCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
     final intensityAsync = ref.watch(roastIntensityProvider);
     final intensity = intensityAsync.value ?? RoastIntensity.medium;
 
@@ -396,62 +400,53 @@ class _QuickRoastCard extends ConsumerWidget {
         intensity: intensity,
       )),
     );
-    final app = AppPackages.targets[packageName];
+    final app = AppPackages.getMeta(packageName);
 
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1A1A1A),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: const Color(0xFFFF8800).withValues(alpha: 0.3),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Text('💬', style: TextStyle(fontSize: 16)),
-              const SizedBox(width: 8),
-              Text(
-                'AI Roast of the Moment',
-                style: TextStyle(
-                  color: Colors.orange[300],
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1,
+    return Card(
+      color: theme.colorScheme.surfaceContainerHighest,
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Text('💬', style: TextStyle(fontSize: 16)),
+                const SizedBox(width: 8),
+                Text(
+                  'AI ROAST OF THE MOMENT',
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: theme.colorScheme.secondary,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.2,
+                  ),
                 ),
-              ),
-              if (app != null) ...[
                 const Spacer(),
                 Text(app.emoji, style: const TextStyle(fontSize: 16)),
               ],
-            ],
-          ),
-          const SizedBox(height: 12),
-          roastAsync.when(
-            loading: () => const _RoastShimmer(),
-            error: (e, _) => Text(
-              RoastEngine.getRoast(packageName, duration),
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-                height: 1.4,
+            ),
+            const SizedBox(height: 12),
+            roastAsync.when(
+              loading: () => const _RoastShimmer(),
+              error: (e, _) => Text(
+                RoastEngine.getRoast(packageName, duration),
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  color: theme.colorScheme.onSurface,
+                  fontWeight: FontWeight.w500,
+                  height: 1.4,
+                ),
+              ),
+              data: (roast) => Text(
+                roast,
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  color: theme.colorScheme.onSurface,
+                  fontWeight: FontWeight.w500,
+                  height: 1.4,
+                ),
               ),
             ),
-            data: (roast) => Text(
-              roast,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-                height: 1.4,
-              ),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -487,6 +482,7 @@ class _RoastShimmerState extends State<_RoastShimmer>
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return FadeTransition(
       opacity: Tween<double>(begin: 0.3, end: 0.7).animate(_anim),
       child: Column(
@@ -495,7 +491,7 @@ class _RoastShimmerState extends State<_RoastShimmer>
           Container(
             height: 14,
             decoration: BoxDecoration(
-              color: Colors.grey[800],
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(4),
             ),
           ),
@@ -504,7 +500,7 @@ class _RoastShimmerState extends State<_RoastShimmer>
             height: 14,
             width: 200,
             decoration: BoxDecoration(
-              color: Colors.grey[800],
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(4),
             ),
           ),
@@ -523,168 +519,167 @@ class _TrackingToggle extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final vm = ref.read(dashboardViewModelProvider);
     final trackingAsync = ref.watch(trackingEnabledProvider);
     final isTracking = trackingAsync.value ?? true;
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1A1A1A),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isTracking
-              ? const Color(0xFF22C55E).withValues(alpha: 0.3)
-              : Colors.grey[800]!,
+    return Card(
+      color: theme.colorScheme.surfaceContainerHighest,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: isTracking
+                    ? theme.colorScheme.primaryContainer
+                    : theme.colorScheme.surface,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                isTracking
+                    ? Icons.visibility_rounded
+                    : Icons.visibility_off_rounded,
+                color: isTracking
+                    ? theme.colorScheme.primary
+                    : theme.colorScheme.onSurfaceVariant,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Active Monitoring',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      color: theme.colorScheme.onSurface,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    isTracking
+                        ? 'Doom Roast is watching'
+                        : 'Paused for productivity',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: isTracking
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            trackingAsync.isLoading
+                ? const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Color(0xFFFF3333),
+                    ),
+                  )
+                : Switch(
+                    value: isTracking,
+                    onChanged: (val) {
+                      vm.toggleTracking(val);
+                    },
+                  ),
+          ],
         ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: isTracking ? const Color(0xFF0D2818) : Colors.grey[900],
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(
-              isTracking
-                  ? Icons.visibility_rounded
-                  : Icons.visibility_off_rounded,
-              color: isTracking ? const Color(0xFF22C55E) : Colors.grey,
-              size: 24,
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Active Monitoring',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  isTracking
-                      ? 'Doom Roast is watching'
-                      : 'Paused for productivity',
-                  style: TextStyle(
-                    color: isTracking
-                        ? const Color(0xFF22C55E)
-                        : Colors.grey[500],
-                    fontSize: 13,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          trackingAsync.isLoading
-              ? const SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Color(0xFF22C55E),
-                  ),
-                )
-              : Switch(
-                  value: isTracking,
-                  activeTrackColor: const Color(
-                    0xFF22C55E,
-                  ).withValues(alpha: 0.5),
-                  activeThumbColor: const Color(0xFF22C55E),
-                  onChanged: (val) {
-                    ref
-                        .read(trackingEnabledProvider.notifier)
-                        .toggleTracking(val);
-                  },
-                ),
-        ],
       ),
     );
   }
 }
+
+// ---------------------------------------------------------------------------
+// Custom thresholds toggle
+// ---------------------------------------------------------------------------
 
 class _CustomThresholdsToggle extends ConsumerWidget {
   const _CustomThresholdsToggle();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final vm = ref.read(dashboardViewModelProvider);
     final customAsync = ref.watch(useCustomThresholdsProvider);
     final useCustom = customAsync.value ?? false;
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1A1A1A),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: const Color(0xFF8B5CF6).withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
+    return Card(
+      color: theme.colorScheme.surfaceContainerHighest,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.tertiary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(Icons.tune, color: theme.colorScheme.tertiary),
             ),
-            child: const Icon(Icons.tune, color: Color(0xFF8B5CF6)),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Custom App Limits',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Custom App Limits',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      color: theme.colorScheme.onSurface,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  useCustom
-                      ? 'Specific limits per app'
-                      : 'Global threshold active',
-                  style: TextStyle(color: Colors.grey[500], fontSize: 13),
-                ),
-              ],
+                  const SizedBox(height: 4),
+                  Text(
+                    useCustom
+                        ? 'Specific limits per app'
+                        : 'Global threshold active',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          customAsync.isLoading
-              ? const SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Color(0xFF8B5CF6),
+            customAsync.isLoading
+                ? SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: theme.colorScheme.tertiary,
+                    ),
+                  )
+                : Switch(
+                    value: useCustom,
+                    onChanged: (val) {
+                      vm.toggleCustomThresholds(val);
+                    },
                   ),
-                )
-              : Switch(
-                  value: useCustom,
-                  activeTrackColor: const Color(
-                    0xFF8B5CF6,
-                  ).withValues(alpha: 0.5),
-                  activeThumbColor: const Color(0xFF8B5CF6),
-                  onChanged: (val) {
-                    ref.read(useCustomThresholdsProvider.notifier).toggle(val);
-                  },
-                ),
-        ],
+          ],
+        ),
       ),
     );
   }
 }
+
+// ---------------------------------------------------------------------------
+// Streak badge
+// ---------------------------------------------------------------------------
 
 class _StreakBadge extends ConsumerWidget {
   const _StreakBadge();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
     final streakAsync = ref.watch(streakProvider);
     final streak = streakAsync.value ?? 0;
 
@@ -694,17 +689,11 @@ class _StreakBadge extends ConsumerWidget {
       margin: const EdgeInsets.only(right: 8),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFFFF8800), Color(0xFFFF4444)],
-        ),
+        color: theme.colorScheme.errorContainer,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFFFF4444).withValues(alpha: 0.3),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        border: Border.all(
+          color: theme.colorScheme.error.withValues(alpha: 0.3),
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -713,8 +702,8 @@ class _StreakBadge extends ConsumerWidget {
           const SizedBox(width: 4),
           Text(
             '$streak',
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: theme.colorScheme.onErrorContainer,
               fontWeight: FontWeight.bold,
               fontSize: 14,
             ),

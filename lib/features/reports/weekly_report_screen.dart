@@ -5,24 +5,9 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
-import '../../providers/usage_provider.dart';
-import '../../providers/config_provider.dart';
-import '../../core/services/groq_service.dart';
 import '../../core/constants/app_packages.dart';
 import '../../core/services/roast_engine.dart';
-import '../../core/services/usage_service.dart';
-
-final weeklyStatsProvider = FutureProvider<List<AppUsageStat>>((ref) async {
-  final service = ref.read(usageServiceProvider);
-  return service.getUsageStats(hours: 168); // 7 days
-});
-
-final weeklyRoastProvider = FutureProvider<String>((ref) async {
-  final stats = await ref.watch(weeklyStatsProvider.future);
-  final intensity =
-      ref.watch(roastIntensityProvider).value ?? RoastIntensity.brutal;
-  return GroqService.getWeeklyRoast(stats, intensity);
-});
+import 'view_models/weekly_report_view_model.dart';
 
 class WeeklyReportScreen extends ConsumerStatefulWidget {
   const WeeklyReportScreen({super.key});
@@ -76,25 +61,24 @@ class _WeeklyReportScreenState extends ConsumerState<WeeklyReportScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final vm = ref.read(weeklyReportViewModelProvider);
     final statsAsync = ref.watch(weeklyStatsProvider);
     final roastAsync = ref.watch(weeklyRoastProvider);
 
     return Scaffold(
-      backgroundColor: Colors.black,
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
+          icon: const Icon(Icons.arrow_back_ios_new),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
       body: statsAsync.when(
-        loading: () => const Center(
-          child: CircularProgressIndicator(color: Color(0xFFFF4444)),
+        loading: () => Center(
+          child: CircularProgressIndicator(color: theme.colorScheme.primary),
         ),
         error: (e, _) => Center(
-          child: Text('Error: $e', style: const TextStyle(color: Colors.red)),
+          child: Text('Error: $e', style: TextStyle(color: theme.colorScheme.error)),
         ),
         data: (stats) {
           final totalMs = stats.fold<int>(
@@ -103,156 +87,148 @@ class _WeeklyReportScreenState extends ConsumerState<WeeklyReportScreen> {
           );
           final totalDuration = Duration(milliseconds: totalMs);
 
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              children: [
-                RepaintBoundary(
-                  key: _globalKey,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [Color(0xFF2B0000), Color(0xFF1A0000)],
-                      ),
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(
-                        color: const Color(0xFFFF4444).withValues(alpha: 0.3),
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFFFF4444).withValues(alpha: 0.1),
-                          blurRadius: 20,
-                          spreadRadius: 5,
-                        ),
-                      ],
-                    ),
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Text(
-                          'WEEKLY SHAME REPORT',
-                          style: TextStyle(
-                            color: Color(0xFFFF4444),
-                            fontSize: 16,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 2,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          RoastEngine.formatDuration(totalDuration),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 48,
-                            fontWeight: FontWeight.bold,
-                            height: 1.1,
-                          ),
-                        ),
-                        const Text(
-                          'wasted this week',
-                          style: TextStyle(color: Colors.grey, fontSize: 16),
-                        ),
-                        const SizedBox(height: 24),
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.black45,
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: roastAsync.when(
-                            loading: () => const Text(
-                              'Generating your weekly roast...',
-                              style: TextStyle(color: Colors.grey),
-                              textAlign: TextAlign.center,
+          return RefreshIndicator(
+            color: theme.colorScheme.primary,
+            backgroundColor: theme.colorScheme.surfaceContainerHighest,
+            onRefresh: () async => vm.refresh(),
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(
+                parent: BouncingScrollPhysics(),
+              ),
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                children: [
+                  RepaintBoundary(
+                    key: _globalKey,
+                    child: Card(
+                      color: theme.colorScheme.surfaceContainerHighest,
+                      elevation: 0,
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                          Text(
+                            'WEEKLY SHAME REPORT',
+                            style: theme.textTheme.labelLarge?.copyWith(
+                              color: theme.colorScheme.primary,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 2,
                             ),
-                            error: (e, _) => const Text(
-                              'Failed to generate roast.',
-                              style: TextStyle(color: Colors.red),
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            RoastEngine.formatDuration(totalDuration),
+                            style: theme.textTheme.displayMedium?.copyWith(
+                              color: theme.colorScheme.onSurface,
+                              fontWeight: FontWeight.bold,
+                              height: 1.1,
                             ),
-                            data: (roast) => Text(
-                              '"$roast"',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontStyle: FontStyle.italic,
-                                height: 1.4,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'wasted this week',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.surface,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: theme.colorScheme.outline,
+                                width: 1,
                               ),
-                              textAlign: TextAlign.center,
+                            ),
+                            child: roastAsync.when(
+                              loading: () => Text(
+                                'Generating your weekly roast...',
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              error: (e, _) => Text(
+                                'Failed to generate roast.',
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: theme.colorScheme.error,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              data: (roast) => Text(
+                                '"$roast"',
+                                style: theme.textTheme.bodyLarge?.copyWith(
+                                  color: theme.colorScheme.onSurface,
+                                  fontStyle: FontStyle.italic,
+                                  height: 1.4,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
                             ),
                           ),
-                        ),
-                        const SizedBox(height: 24),
-                        if (stats.isNotEmpty)
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            alignment: WrapAlignment.center,
-                            children: stats.take(4).map((s) {
-                              final app = AppPackages.targets[s.packageName];
-                              final emoji = app?.emoji ?? '📱';
-                              return Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 8,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.white10,
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: Text(
-                                  '$emoji ${RoastEngine.formatDuration(s.totalTime)}',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
+                          const SizedBox(height: 24),
+                          if (stats.isNotEmpty)
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              alignment: WrapAlignment.center,
+                              children: stats.take(4).map((s) {
+                                final app = AppPackages.getMeta(s.packageName);
+                                final emoji = app.emoji;
+                                return Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 8,
                                   ),
-                                ),
-                              );
-                            }).toList(),
+                                  decoration: BoxDecoration(
+                                    color: theme.colorScheme.surfaceContainerHighest,
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(color: theme.colorScheme.outline),
+                                  ),
+                                  child: Text(
+                                    '$emoji ${RoastEngine.formatDuration(s.totalTime)}',
+                                    style: theme.textTheme.labelLarge?.copyWith(
+                                      color: theme.colorScheme.onSurface,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                          const SizedBox(height: 20),
+                          Text(
+                            'generated by 🔥 Doom Roast',
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
-                        const SizedBox(height: 16),
-                        const Text(
-                          'generated by 🔥 Doom Roast',
-                          style: TextStyle(
-                            color: Colors.grey,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                          ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 32),
-                if (!_isSharing)
-                  SizedBox(
-                    width: double.infinity,
-                    height: 56,
-                    child: ElevatedButton.icon(
-                      onPressed: roastAsync.isLoading ? null : _captureAndShare,
-                      icon: const Icon(Icons.share, color: Colors.white),
-                      label: const Text(
-                        'SHARE MY SHAME',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1,
+                  const SizedBox(height: 32),
+                  if (!_isSharing)
+                    SizedBox(
+                      width: double.infinity,
+                      height: 56,
+                      child: FilledButton.icon(
+                        onPressed: roastAsync.isLoading ? null : _captureAndShare,
+                        icon: const Icon(Icons.share),
+                        label: const Text('SHARE MY SHAME'),
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 18),
                         ),
                       ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFFF4444),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                      ),
-                    ),
-                  )
-                else
-                  const CircularProgressIndicator(color: Color(0xFFFF4444)),
-              ],
+                    )
+                  else
+                    CircularProgressIndicator(color: theme.colorScheme.primary),
+                ],
+              ),
             ),
           );
         },
