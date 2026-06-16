@@ -8,15 +8,16 @@ Doom Roast monitors your screen time on social media apps and delivers brutally 
 
 ## ✨ Features
 
-- **📊 Usage Tracking** — Monitors time spent on Instagram, Twitter/X, Facebook, YouTube, TikTok, Reddit, and Snapchat
-- **🪟 Full-Screen Roast Overlay** — Covers the offending app with a savage roast message and a mandatory 10-second shame timer before you can dismiss
+- **📊 Usage Tracking** — Select and monitor **any** installed application on your device (with dynamic branding fallbacks, deterministic theme generation, and preset icon matching)
+- **🪟 Full-Screen Roast Overlay** — Covers the offending app with a savage roast message and a mandatory 10-second shame timer, now using a scrollable viewport to prevent layout clipping
+- **🎨 Pure Material 3** — Redesigned interface following strict Material Design 3 guidelines using harmonious container colors, standard surfaces, and official typography
 - **🔥 Pre-Written Roast Bank** — 30+ hand-crafted, app-specific roasts that hit different
 - **⚡ Roast Intensity** — Choose between Gentle Nudge 😊, Moderate Shame 😤, or Full Intervention 🔥
-- **⏱️ Configurable Spam Threshold** — Set your limit from 1 to 60 minutes on the dashboard.
+- **⏱️ Configurable Spam Threshold** — Set your limit from 1 to 120 minutes on the dashboard, with support for per-app thresholds
 - **🔄 Aggressive Background Monitoring** — Foreground service polls every 15 seconds. If you exceed your limit, the overlay will continuously spam you every 15 seconds until you close the doomscrolling app!
-- **⏸️ Productivity Pause** — One-tap toggle to temporarily pause monitoring when you actually need to use a tracked app for work.
+- **⏸️ Productivity Pause** — One-tap toggle to temporarily pause monitoring when you actually need to use a tracked app for work
 - **🚀 Boot Persistence** — Automatically restarts monitoring when your device reboots
-- **🌑 Dark Mode UI** — Premium dark interface with gradient accents and smooth animations
+- **🌑 Dark Mode UI** — Premium dark interface with Material 3 color harmonies and smooth micro-interactions
 
 ---
 
@@ -91,6 +92,7 @@ roast_guard/
 | `RECEIVE_BOOT_COMPLETED` | Restart service on reboot |
 | `POST_NOTIFICATIONS` | Show monitoring notification |
 | `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` | Ensure background WorkManager reliability |
+| `QUERY_ALL_PACKAGES` | Allows querying and filtering user-installed applications (Android 11+) |
 
 ---
 

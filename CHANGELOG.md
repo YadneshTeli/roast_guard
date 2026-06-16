@@ -5,6 +5,24 @@ All notable changes to RoastGuard will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
+## [2.1.0] - 2026-06-16
+
+### Added
+- **Dynamic App Tracking**: Replaced the hardcoded social media package monitoring list with dynamic queries. Users can now select and monitor *any* installed app on their device.
+- **Dynamic App Metadata Fallbacks**: Automatically generates clean icon fallbacks and deterministic branding colors for non-preset monitored applications.
+- **M3 Real-Time App Manager**: Added a searchable, scrollable Material 3 Modal Bottom Sheet in the settings page to check, add, and remove monitored packages in real-time.
+- **Android 11+ Package Query Permission**: Declared `QUERY_ALL_PACKAGES` permission to ensure visibility of all installed packages under strict Android API 30+ restrictions.
+
+### Changed
+- **Pure Material 3 Redesign**: Refactored the onboarding, dashboard, settings, and weekly report views to comply strictly with Material Design 3. Removed custom glows, drop shadows, and linear text gradients in favor of standard M3 card, surface, and typography elements.
+- **Streak Badge Theme**: Updated the fire streak badge to use standard M3 `errorContainer` and `onErrorContainer` theme colors for improved contrast.
+
+### Fixed
+- **SharedPreferences ClassCastException (Int to Long)**: Handled Flutter-to-Kotlin int-casting quirks on Android by introducing a fallback helper to process `Long` values.
+- **JSON List Prefix Parsing**: Fixed background monitor failures by isolating JSON arrays directly using character search, bypassing arbitrary Flutter prefixing.
+- **Overlay Layout Scrollable Viewport**: Added a `ScrollView` wrapper inside the native overlay layout to prevent clipping on smaller devices and ensure the dismiss button is always reachable.
+
 ---
 
 ## [2.0.1] - 2026-05-08
