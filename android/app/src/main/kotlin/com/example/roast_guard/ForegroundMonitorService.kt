@@ -139,38 +139,48 @@ class ForegroundMonitorService : Service() {
         // Suppress overlay blasts if tracking is disabled
         val trackingEnabled = flutterPrefs.getBoolean("flutter.tracking_enabled", true)
         if (!trackingEnabled) {
+            Log.d(TAG, "Active monitoring is disabled in settings")
             return
         }
 
-        val nextAllowedTime = flutterPrefs.getLong("next_allowed_roast_time", 0L)
+        val nextAllowedTime = flutterPrefs.getLong("flutter.next_allowed_roast_time", 0L)
         if (System.currentTimeMillis() < nextAllowedTime) {
+            val remainingSec = (nextAllowedTime - System.currentTimeMillis()) / 1000
+            Log.d(TAG, "In cooldown grace period ($remainingSec s remaining)")
             return
         }
 
         val currentApp = getCurrentForegroundApp()
-        if (currentApp == null || currentApp !in getTargetApps()) {
+        val targetApps = getTargetApps()
+        Log.d(TAG, "Poll tick: CurrentForeground='$currentApp', TargetApps=$targetApps")
+
+        if (currentApp == null || currentApp !in targetApps) {
+            return
+        }
+
+        // Do not roast if the user is inside Doom Roast itself
+        if (currentApp == packageName) {
             return
         }
 
         val totalMs = getAppUsageToday(currentApp)
         val thresholdMs = getThresholdMs(currentApp)
 
-        Log.d(TAG, "App: $currentApp, Usage: ${totalMs / 1000}s, Threshold: ${thresholdMs / 1000}s")
+        Log.d(TAG, "Target app in foreground: $currentApp | Today's Usage: ${totalMs / 1000}s (${totalMs / 60000}m) | Threshold: ${thresholdMs / 1000}s (${thresholdMs / 60000}m)")
 
         if (totalMs >= thresholdMs) {
-            Log.d(TAG, "THRESHOLD EXCEEDED for $currentApp — triggering roast!")
+            Log.d(TAG, "💥 THRESHOLD EXCEEDED for $currentApp — triggering roast overlay!")
             triggerRoast(currentApp, totalMs)
         }
     }
 
     /**
-     * Uses UsageEvents to find the ACTUAL current foreground app.
-     * MOVE_TO_FOREGROUND events are more reliable than queryUsageStats for real-time detection.
+     * Uses UsageEvents with 2-hour window and fallback to accurately find the ACTUAL current foreground app.
      */
     private fun getCurrentForegroundApp(): String? {
         val usm = getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
         val now = System.currentTimeMillis()
-        val events = usm.queryEvents(now - 5 * 60 * 1000L, now)
+        val events = usm.queryEvents(now - 2 * 60 * 60 * 1000L, now)
 
         var lastForegroundApp: String? = null
         var lastForegroundTime = 0L
@@ -178,38 +188,44 @@ class ForegroundMonitorService : Service() {
 
         while (events.hasNextEvent()) {
             events.getNextEvent(event)
-            if (event.eventType == UsageEvents.Event.MOVE_TO_FOREGROUND) {
-                if (event.timeStamp > lastForegroundTime) {
+            // Event.MOVE_TO_FOREGROUND (1) or Event.ACTIVITY_RESUMED (1)
+            if (event.eventType == UsageEvents.Event.MOVE_TO_FOREGROUND || event.eventType == 1) {
+                if (event.timeStamp >= lastForegroundTime) {
                     lastForegroundTime = event.timeStamp
                     lastForegroundApp = event.packageName
                 }
+            } else if (event.eventType == UsageEvents.Event.MOVE_TO_BACKGROUND || event.eventType == 2 || event.eventType == 23) {
+                if (event.timeStamp >= lastForegroundTime && event.packageName == lastForegroundApp) {
+                    lastForegroundApp = null
+                }
             }
+        }
+
+        // Fallback: Query the most recently active package in the last 30 seconds
+        if (lastForegroundApp == null) {
+            val stats = usm.queryUsageStats(UsageStatsManager.INTERVAL_DAILY, now - 30_000L, now)
+            lastForegroundApp = stats?.filter { it.lastTimeUsed > now - 30_000L }?.maxByOrNull { it.lastTimeUsed }?.packageName
         }
 
         return lastForegroundApp
     }
 
     /**
-     * Gets actual usage time for an app today, tracked by Android itself.
-     * No in-memory state needed — survives service restarts.
+     * Gets aggregated usage time for an app across the past 24 hours.
      */
     private fun getAppUsageToday(packageName: String): Long {
         val usm = getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
-
-        val calendar = java.util.Calendar.getInstance().apply {
-            set(java.util.Calendar.HOUR_OF_DAY, 0)
-            set(java.util.Calendar.MINUTE, 0)
-            set(java.util.Calendar.SECOND, 0)
-            set(java.util.Calendar.MILLISECOND, 0)
-        }
-        val startOfDay = calendar.timeInMillis
         val now = System.currentTimeMillis()
-
-        val stats = usm.queryUsageStats(UsageStatsManager.INTERVAL_DAILY, startOfDay, now)
-        return stats?.firstOrNull { it.packageName == packageName }?.totalTimeInForeground ?: 0L
+        val statsMap = usm.queryAndAggregateUsageStats(now - 24 * 60 * 60 * 1000L, now)
+        return statsMap[packageName]?.totalTimeInForeground ?: 0L
     }
 
     private fun triggerRoast(packageName: String, totalMs: Long) {
+        if (!android.provider.Settings.canDrawOverlays(this)) {
+            Log.w(TAG, "Cannot trigger roast overlay: Display Over Other Apps permission is NOT granted!")
+            return
+        }
+
         val todayStr = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(java.util.Date())
         getSharedPreferences("FlutterSharedPreferences", MODE_PRIVATE)
             .edit()

@@ -44,65 +44,71 @@ class OverlayService : Service() {
     }
 
     private fun showOverlay(packageName: String, totalMs: Long) {
-        windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
+        try {
+            windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
 
-        val inflater = LayoutInflater.from(this)
-        overlayView = inflater.inflate(R.layout.overlay_layout, null)
+            val inflater = LayoutInflater.from(this)
+            overlayView = inflater.inflate(R.layout.overlay_layout, null)
 
-        val roastText = overlayView?.findViewById<TextView>(R.id.roast_text)
-        val dismissBtn = overlayView?.findViewById<Button>(R.id.dismiss_btn)
-        val timerText = overlayView?.findViewById<TextView>(R.id.timer_text)
+            val roastText = overlayView?.findViewById<TextView>(R.id.roast_text)
+            val dismissBtn = overlayView?.findViewById<Button>(R.id.dismiss_btn)
+            val timerText = overlayView?.findViewById<TextView>(R.id.timer_text)
 
-        // Read the pre-fetched AI roast cached by the Flutter side at startup.
-        // Key written by Dart: SharedPreferences.setString('cached_roast_$packageName', ...)
-        val flutterPrefs = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-        val cacheKey = "flutter.cached_roast_$packageName"
-        val cachedRoast = flutterPrefs.getString(cacheKey, null)
+            // Read the pre-fetched AI roast cached by the Flutter side at startup.
+            val flutterPrefs = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+            val cacheKey = "flutter.cached_roast_$packageName"
+            val cachedRoast = flutterPrefs.getString(cacheKey, null)
 
-        roastText?.text = if (!cachedRoast.isNullOrBlank()) {
-            // Consume the cached roast so the next overlay gets a fresh one
-            flutterPrefs.edit().remove(cacheKey).apply()
-            cachedRoast
-        } else {
-            // Cache miss — use static fallback (happens on first launch or offline)
-            getRoastForPackage(packageName, totalMs)
-        }
+            roastText?.text = if (!cachedRoast.isNullOrBlank()) {
+                // Consume the cached roast so the next overlay gets a fresh one
+                flutterPrefs.edit().remove(cacheKey).apply()
+                cachedRoast
+            } else {
+                // Cache miss — use static fallback (happens on first launch or offline)
+                getRoastForPackage(packageName, totalMs)
+            }
 
-        // Force random wait between 10 and 60 seconds before dismiss
-        var secondsLeft = (10..60).random()
-        timerText?.text = "You must face this for ${secondsLeft}s"
-        dismissBtn?.isEnabled = false
-        dismissBtn?.alpha = 0.4f
+            // Force random wait between 5 and 15 seconds before dismiss
+            var secondsLeft = (5..15).random()
+            timerText?.text = "You must face this for ${secondsLeft}s"
+            dismissBtn?.isEnabled = false
+            dismissBtn?.alpha = 0.4f
 
-        val runnable = object : Runnable {
-            override fun run() {
-                if (overlayView == null) return
-                secondsLeft--
-                if (secondsLeft <= 0) {
-                    timerText?.text = "Fine. Go touch grass."
-                    dismissBtn?.isEnabled = true
-                    dismissBtn?.alpha = 1.0f
-                } else {
-                    timerText?.text = "You must face this for ${secondsLeft}s"
-                    handler.postDelayed(this, 1000)
+            val runnable = object : Runnable {
+                override fun run() {
+                    if (overlayView == null) return
+                    secondsLeft--
+                    if (secondsLeft <= 0) {
+                        timerText?.text = "Fine. Go touch grass."
+                        dismissBtn?.isEnabled = true
+                        dismissBtn?.alpha = 1.0f
+                    } else {
+                        timerText?.text = "You must face this for ${secondsLeft}s"
+                        handler.postDelayed(this, 1000)
+                    }
                 }
             }
+            timerRunnable = runnable
+            handler.postDelayed(runnable, 1000)
+
+            dismissBtn?.setOnClickListener { removeOverlay(packageName) }
+
+            val params = WindowManager.LayoutParams(
+                WindowManager.LayoutParams.MATCH_PARENT,
+                WindowManager.LayoutParams.MATCH_PARENT,
+                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                        WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+                PixelFormat.TRANSLUCENT
+            )
+
+            windowManager?.addView(overlayView, params)
+            android.util.Log.d("OverlayService", "Overlay successfully displayed for $packageName")
+        } catch (e: Exception) {
+            android.util.Log.e("OverlayService", "Failed to display overlay", e)
+            isShowing = false
+            overlayView = null
         }
-        timerRunnable = runnable
-        handler.postDelayed(runnable, 1000)
-
-        dismissBtn?.setOnClickListener { removeOverlay(packageName) }
-
-        val params = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.MATCH_PARENT,
-            WindowManager.LayoutParams.MATCH_PARENT,
-            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
-            PixelFormat.TRANSLUCENT
-        )
-
-        windowManager?.addView(overlayView, params)
     }
 
     private fun getRoastForPackage(packageName: String, totalMs: Long): String {

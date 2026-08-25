@@ -14,6 +14,7 @@ import 'features/reports/weekly_report_screen.dart';
 import 'core/services/groq_service.dart';
 import 'core/services/background_prefetch.dart';
 import 'providers/config_provider.dart';
+import 'providers/usage_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -109,7 +110,7 @@ class RoastGuardApp extends ConsumerStatefulWidget {
 }
 
 class _RoastGuardAppState extends ConsumerState<RoastGuardApp> {
-  late final AppLifecycleListener _lifecycleListener;
+  AppLifecycleListener? _lifecycleListener;
 
   @override
   void initState() {
@@ -127,6 +128,9 @@ class _RoastGuardAppState extends ConsumerState<RoastGuardApp> {
     // modifies this flag in the background while the Flutter app is asleep.
     await prefs.reload();
     
+    // Invalidate usage stats to refresh the dashboard
+    ref.invalidate(usageStatsProvider);
+
     final pendingPackage = prefs.getString('roast_prefetch_pending');
     if (pendingPackage == null || pendingPackage.isEmpty) return;
 
@@ -142,7 +146,7 @@ class _RoastGuardAppState extends ConsumerState<RoastGuardApp> {
 
   @override
   void dispose() {
-    _lifecycleListener.dispose();
+    _lifecycleListener?.dispose();
     super.dispose();
   }
 

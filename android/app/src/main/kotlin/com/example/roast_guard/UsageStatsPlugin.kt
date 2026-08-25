@@ -29,8 +29,20 @@ class UsageStatsPlugin(private val context: Context) : MethodChannel.MethodCallH
             "getInstalledApps" -> getInstalledApps(result)
             "startMonitorService" -> startMonitorService(result)
             "stopMonitorService" -> stopMonitorService(result)
+            "testOverlay" -> testOverlay(call, result)
             else -> result.notImplemented()
         }
+    }
+
+    private fun testOverlay(call: MethodCall, result: MethodChannel.Result) {
+        val packageName = call.argument<String>("packageName") ?: "com.instagram.android"
+        val totalMs = call.argument<Long>("totalMs") ?: 120_000L
+        val intent = Intent(context, OverlayService::class.java).apply {
+            putExtra("package_name", packageName)
+            putExtra("total_ms", totalMs)
+        }
+        context.startService(intent)
+        result.success(null)
     }
 
     private fun hasUsagePermission(): Boolean {
@@ -133,6 +145,7 @@ class UsageStatsPlugin(private val context: Context) : MethodChannel.MethodCallH
         val resultList = packages
             .filter {
                 val appInfo = it.applicationInfo
+                it.packageName != context.packageName &&
                 appInfo != null && (
                     (appInfo.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) == 0 ||
                     (appInfo.flags and android.content.pm.ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0

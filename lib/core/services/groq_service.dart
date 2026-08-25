@@ -15,7 +15,15 @@ class GroqService {
   GroqService._();
 
   static const _baseUrl = 'https://api.groq.com/openai/v1/chat/completions';
-  static const _model = 'llama-3.1-8b-instant';
+  
+  // Model hierarchy
+  static const _primaryModel = 'openai/gpt-oss-120b';
+  static const _fallbackModel = 'qwen/qwen3.6-27b';
+
+  // Weekly reports: Deep reasoning first, then fast fallbacks
+  static const _weeklyModels = [_primaryModel, _fallbackModel];
+  // Quick instant roasts: OpenAI OSS 120B primary, Qwen 3.6 fallback
+  static const _quickModels = [_primaryModel, _fallbackModel];
 
   static final _dio =
       Dio(
@@ -68,6 +76,78 @@ class GroqService {
     ],
   };
 
+  /// Cleans any reasoning / thinking tokens or unclosed tags from the model output.
+  static String _cleanRoast(String text) {
+    // Strip closed <think>...</think> blocks
+    var cleaned = text
+        .replaceAll(RegExp(r'<think>[\s\S]*?</think>', caseSensitive: false), '')
+        .trim();
+    // If unclosed <think> exists (e.g. truncated), remove everything after <think>
+    if (cleaned.contains(RegExp(r'<think>', caseSensitive: false))) {
+      cleaned = cleaned
+          .replaceAll(RegExp(r'<think>[\s\S]*', caseSensitive: false), '')
+          .trim();
+    }
+    return cleaned;
+  }
+
+  /// Helper to post chat completions with automatic model fallback
+  static Future<String?> _postChatCompletion({
+    required String apiKey,
+    required List<String> models,
+    required List<Map<String, String>> messages,
+    required double temperature,
+    required int maxTokens,
+  }) async {
+    for (final model in models) {
+      try {
+        final body = <String, dynamic>{
+          'model': model,
+          'messages': messages,
+          'temperature': temperature,
+          'max_tokens': maxTokens,
+        };
+
+        // Suppress CoT / reasoning think tags for reasoning models
+        if (model.contains('gpt-oss') ||
+            model.contains('qwen') ||
+            model.contains('deepseek') ||
+            model.contains('r1')) {
+          body['reasoning_format'] = 'hidden';
+          if (model.contains('qwen')) {
+            body['reasoning_effort'] = 'none';
+          } else if (model.contains('gpt-oss')) {
+            body['reasoning_effort'] = 'low';
+          }
+        }
+
+        final response = await _dio.post<Map<String, dynamic>>(
+          _baseUrl,
+          options: Options(
+            headers: {
+              HttpHeaders.authorizationHeader: 'Bearer $apiKey',
+              HttpHeaders.contentTypeHeader: 'application/json',
+            },
+          ),
+          data: body,
+        );
+
+        final content =
+            response.data?['choices']?[0]?['message']?['content'] as String?;
+        if (content != null && content.trim().isNotEmpty) {
+          final cleaned = _cleanRoast(content);
+          if (cleaned.isNotEmpty) {
+            return cleaned;
+          }
+        }
+      } catch (_) {
+        // Try next fallback model in the list
+        continue;
+      }
+    }
+    return null;
+  }
+
   /// Generate an AI roast for [packageName] given [time] spent and [intensity].
   /// Returns the AI roast string, or a static fallback on error.
   static Future<String> getRoast(
@@ -84,37 +164,25 @@ class GroqService {
         return _fallback(packageName, timeStr);
       }
 
-      final response = await _dio.post<Map<String, dynamic>>(
-        _baseUrl,
-        options: Options(
-          headers: {
-            HttpHeaders.authorizationHeader: 'Bearer $apiKey',
-            HttpHeaders.contentTypeHeader: 'application/json',
+      final content = await _postChatCompletion(
+        apiKey: apiKey,
+        models: _quickModels,
+        messages: [
+          {'role': 'system', 'content': _getSystemPrompt(intensity)},
+          {
+            'role': 'user',
+            'content':
+                'Roast me. I just spent $timeStr on $appName. '
+                'Make it sting but keep it funny. Two sentences max.',
           },
-        ),
-        data: {
-          'model': _model,
-          'messages': [
-            {'role': 'system', 'content': _getSystemPrompt(intensity)},
-            {
-              'role': 'user',
-              'content':
-                  'Roast me. I just spent $timeStr on $appName. '
-                  'Make it sting but keep it funny. Two sentences max.',
-            },
-          ],
-          'temperature': 0.9,
-          'max_tokens': 80,
-        },
+        ],
+        temperature: 0.9,
+        maxTokens: 120,
       );
 
-      final content =
-          response.data?['choices']?[0]?['message']?['content'] as String?;
-      if (content != null && content.trim().isNotEmpty) {
-        return content.trim();
+      if (content != null) {
+        return content;
       }
-    } on DioException {
-      // Network / timeout / auth error → silent fallback
     } catch (_) {
       // Any other error → silent fallback
     }
@@ -141,34 +209,24 @@ class GroqService {
       if (existing != null && existing.isNotEmpty) continue;
 
       try {
-        final response = await _dio.post<Map<String, dynamic>>(
-          _baseUrl,
-          options: Options(
-            headers: {
-              HttpHeaders.authorizationHeader: 'Bearer $apiKey',
-              HttpHeaders.contentTypeHeader: 'application/json',
+        final content = await _postChatCompletion(
+          apiKey: apiKey,
+          models: _quickModels,
+          messages: [
+            {'role': 'system', 'content': _getSystemPrompt(intensity)},
+            {
+              'role': 'user',
+              'content':
+                  'Write ONE brutal roast (2 sentences max) for someone '
+                  'who spends too much time on $appName. Be sharp, witty, specific.',
             },
-          ),
-          data: {
-            'model': _model,
-            'messages': [
-              {'role': 'system', 'content': _getSystemPrompt(intensity)},
-              {
-                'role': 'user',
-                'content':
-                    'Write ONE brutal roast (2 sentences max) for someone '
-                    'who spends too much time on $appName. Be sharp, witty, specific.',
-              },
-            ],
-            'temperature': 0.95,
-            'max_tokens': 80,
-          },
+          ],
+          temperature: 0.95,
+          maxTokens: 120,
         );
 
-        final content =
-            response.data?['choices']?[0]?['message']?['content'] as String?;
-        if (content != null && content.trim().isNotEmpty) {
-          await prefs.setString('cached_roast_$packageName', content.trim());
+        if (content != null) {
+          await prefs.setString('cached_roast_$packageName', content);
         }
       } catch (_) {
         // Skip this app on any error — overlay will use static fallback
@@ -191,35 +249,25 @@ class GroqService {
     final appName = AppPackages.getMeta(packageName).name;
 
     try {
-      final response = await _dio.post<Map<String, dynamic>>(
-        _baseUrl,
-        options: Options(
-          headers: {
-            HttpHeaders.authorizationHeader: 'Bearer $apiKey',
-            HttpHeaders.contentTypeHeader: 'application/json',
+      final content = await _postChatCompletion(
+        apiKey: apiKey,
+        models: _quickModels,
+        messages: [
+          {'role': 'system', 'content': _getSystemPrompt(intensity)},
+          {
+            'role': 'user',
+            'content':
+                'Write ONE brutal roast (2 sentences max) for someone '
+                'who spends too much time on $appName. Be sharp, witty, specific.',
           },
-        ),
-        data: {
-          'model': _model,
-          'messages': [
-            {'role': 'system', 'content': _getSystemPrompt(intensity)},
-            {
-              'role': 'user',
-              'content':
-                  'Write ONE brutal roast (2 sentences max) for someone '
-                  'who spends too much time on $appName. Be sharp, witty, specific.',
-            },
-          ],
-          'temperature': 0.95,
-          'max_tokens': 80,
-        },
+        ],
+        temperature: 0.95,
+        maxTokens: 120,
       );
 
-      final content =
-          response.data?['choices']?[0]?['message']?['content'] as String?;
-      if (content != null && content.trim().isNotEmpty) {
+      if (content != null) {
         final prefs = await _getPrefs();
-        await prefs.setString('cached_roast_$packageName', content.trim());
+        await prefs.setString('cached_roast_$packageName', content);
       }
     } catch (_) {
       // Overlay will use static fallback — that is fine
@@ -288,37 +336,32 @@ class GroqService {
     }
 
     try {
-      final response = await _dio.post(
-        'https://api.groq.com/openai/v1/chat/completions',
-        options: Options(
-          headers: {
-            'Authorization': 'Bearer $apiKey',
-            'Content-Type': 'application/json',
+      final content = await _postChatCompletion(
+        apiKey: apiKey,
+        models: _weeklyModels,
+        messages: [
+          {
+            'role': 'system',
+            'content':
+                'You are a brutally honest productivity coach. Give a brutal 3-sentence summary roast based on this person\'s weekly app usage. Be specific about the apps and times. No emojis. No hashtags.',
           },
-        ),
-        data: {
-          'model': 'llama-3.3-70b-versatile',
-          'messages': [
-            {
-              'role': 'system',
-              'content':
-                  'You are a brutally honest productivity coach. Give a brutal 3-sentence summary roast based on this person\'s weekly app usage. Be specific about the apps and times. No emojis. No hashtags.',
-            },
-            {
-              'role': 'user',
-              'content': 'Here is my weekly screen time: $usageSummary',
-            },
-          ],
-          'temperature': 0.8,
-          'max_tokens': 150,
-        },
+          {
+            'role': 'user',
+            'content': 'Here is my weekly screen time: $usageSummary',
+          },
+        ],
+        temperature: 0.8,
+        maxTokens: 250,
       );
 
-      final content = response.data['choices'][0]['message']['content'];
-      return content.toString().trim();
+      if (content != null) {
+        return content;
+      }
     } catch (e) {
-      return "I tried to roast your weekly usage, but the API crashed trying to comprehend that much wasted time.";
+      // Fall through to fallback message
     }
+
+    return "I tried to roast your weekly usage, but the API crashed trying to comprehend that much wasted time.";
   }
 
   static String _formatDuration(Duration d) {

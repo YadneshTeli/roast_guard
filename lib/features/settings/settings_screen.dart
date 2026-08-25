@@ -387,14 +387,29 @@ class _AboutSection extends ConsumerWidget {
     return _SettingsSection(
       title: '🔥 About RoastGuard',
       subtitle: '$versionStr — The app that roasts you for doomscrolling',
-      child: Text(
-        'RoastGuard monitors your screen time on social media apps and delivers '
-        'brutally honest AI-generated roasts when you exceed your time limit. '
-        "It's the productivity app you didn't ask for, but desperately need.",
-        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-              height: 1.5,
-            ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'RoastGuard monitors your screen time on social media apps and delivers '
+            'brutally honest AI-generated roasts when you exceed your time limit. '
+            "It's the productivity app you didn't ask for, but desperately need.",
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                  height: 1.5,
+                ),
+          ),
+          const SizedBox(height: 16),
+          FilledButton.tonalIcon(
+            onPressed: () async {
+              final tracked = ref.read(trackedPackagesProvider);
+              final pkg = tracked.isNotEmpty ? tracked.first : 'com.instagram.android';
+              await ref.read(usageServiceProvider).testOverlay(packageName: pkg);
+            },
+            icon: const Icon(Icons.play_circle_outline_rounded),
+            label: const Text('Test Overlay Now'),
+          ),
+        ],
       ),
     );
   }

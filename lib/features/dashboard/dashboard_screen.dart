@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../providers/config_provider.dart';
 import '../../providers/usage_provider.dart';
+import '../../providers/tracked_packages_provider.dart';
 import '../../providers/streak_provider.dart';
 import '../../core/constants/app_packages.dart';
 import '../../core/services/roast_engine.dart';
@@ -43,10 +46,27 @@ class DashboardScreen extends ConsumerStatefulWidget {
 
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   final _usageService = UsageService();
+  AppLifecycleListener? _lifecycleListener;
+  Timer? _refreshTimer;
 
   @override
   void initState() {
     super.initState();
+    _lifecycleListener = AppLifecycleListener(
+      onResume: () {
+        if (mounted) {
+          ref.invalidate(usageStatsProvider);
+        }
+      },
+    );
+
+    // Periodically refresh usage stats while the dashboard is visible
+    _refreshTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+      if (mounted) {
+        ref.invalidate(usageStatsProvider);
+      }
+    });
+
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final prefs = await SharedPreferences.getInstance();
       final enabled = prefs.getBool('tracking_enabled') ?? true;
@@ -54,6 +74,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         _usageService.startMonitorService();
       }
     });
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    _lifecycleListener?.dispose();
+    super.dispose();
   }
 
   @override
@@ -188,7 +215,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       delegate: SliverChildListDelegate([
                         _ShameSummary(
                           totalDuration: totalDuration,
-                          appCount: filtered.length,
+                          appCount: ref.watch(trackedPackagesProvider).length,
                         ),
                         const SizedBox(height: 28),
                         if (filtered.isNotEmpty) ...[

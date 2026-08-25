@@ -74,6 +74,11 @@ class UsageService {
   Future<void> requestBatteryOptimizationBypass() async {
     await _channel.invokeMethod('requestBatteryOptimizationBypass');
   }
+
+  /// Manually trigger the native overlay window for testing.
+  Future<void> testOverlay({String packageName = 'com.instagram.android'}) async {
+    await _channel.invokeMethod('testOverlay', {'packageName': packageName});
+  }
 }
 
 /// Represents usage stats for a single app.
