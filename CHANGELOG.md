@@ -6,6 +6,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [2.2.0] - 2026-10-24
+
+### Added
+- **Google Gemma 4 Open-Weights Engine**: Integrated Google's Gemma 4 (`gemma-4-26b-a4b-it` / `gemma-4-31b-it`) via the Gemini API as a primary open-weights AI roasting engine.
+- **Multi-Engine AI Routing**: Added a Material 3 engine selector in Settings to seamlessly switch between **💎 Gemma 4** and **⚡ Groq** with cross-provider fallbacks.
+- **Temporal Context Injection**: Roasts now adapt dynamically to the time of day (e.g. late-night doomscrolling vs. workday slacking).
+- **Proactive Cache Refill**: Automatically triggers background prefetching when switching AI providers so the native overlay never falls back to static roasts.
+
+### Changed
+- **Threshold Slider Alignment**: Expanded the dashboard spam threshold slider to 120 minutes with boundary indicators, matching Settings and eliminating range assertion failures.
+- **Zero Plaintext Secrets**: Removed redundant API key storage from plaintext `SharedPreferences`; all keys are now strictly loaded via `.env`.
+
+### Fixed
+- **Chain-of-Thought `<think>` Leaks**: Suppressed internal model reasoning scratchpads across four layers (`thinkingBudget: 0`, expanded token ceilings, Dart regex sanitizers, and native Android `OverlayService` filters).
+- **Detached Prefetch Error Handling**: Handled asynchronous exceptions in the detached provider switcher future to prevent unhandled zone errors.
+
+---
+
 ## [2.1.0] - 2026-06-16
 
 ### Added
