@@ -9,7 +9,7 @@ class ThresholdSlider extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final vm = ref.read(settingsViewModelProvider);
+    final vm = ref.watch(settingsViewModelProvider);
     final thresholdAsync = ref.watch(thresholdMinutesProvider);
     final threshold = thresholdAsync.value ?? 10;
 
