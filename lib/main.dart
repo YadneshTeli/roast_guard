@@ -11,7 +11,7 @@ import 'features/onboarding/permission_screen.dart';
 import 'features/dashboard/dashboard_screen.dart';
 import 'features/settings/settings_screen.dart';
 import 'features/reports/weekly_report_screen.dart';
-import 'core/services/groq_service.dart';
+import 'core/services/roast_ai_service.dart';
 import 'core/services/background_prefetch.dart';
 import 'providers/config_provider.dart';
 import 'providers/usage_provider.dart';
@@ -49,10 +49,14 @@ void main() async {
   final prefs = await SharedPreferences.getInstance();
   final onboarded = prefs.getBool('onboarding_complete') ?? false;
 
-  // Persist GROQ API key so native OverlayService can read it directly
+  // Persist API keys for background access
   final groqKey = dotenv.env['GROQ_API'] ?? '';
   if (groqKey.isNotEmpty) {
     await prefs.setString('groq_api_key', groqKey);
+  }
+  final geminiKey = dotenv.env['GEMINI_API_KEY'] ?? '';
+  if (geminiKey.isNotEmpty) {
+    await prefs.setString('gemini_api_key', geminiKey);
   }
 
   // Initialise WorkManager for background roast prefetch tasks
@@ -72,7 +76,7 @@ void main() async {
   // Pre-fetch AI roasts per app in background — OverlayService reads from cache
   final intensityIndex = prefs.getInt('roast_intensity') ?? 1;
   final intensity = RoastIntensity.values[intensityIndex.clamp(0, 2)];
-  GroqService.prefetchRoasts(intensity); // fire-and-forget
+  RoastAiService.prefetchRoasts(intensity); // fire-and-forget
 
   runApp(ProviderScope(child: RoastGuardApp(skipOnboarding: onboarded)));
 }
@@ -141,7 +145,7 @@ class _RoastGuardAppState extends ConsumerState<RoastGuardApp> {
     final intensity = RoastIntensity.values[intensityIndex.clamp(0, 2)];
 
     // Targeted fetch — only the package whose cache was just consumed
-    GroqService.prefetchSingleRoast(pendingPackage, intensity);
+    RoastAiService.prefetchSingleRoast(pendingPackage, intensity);
   }
 
   @override

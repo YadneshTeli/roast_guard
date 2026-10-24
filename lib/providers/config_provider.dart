@@ -58,6 +58,56 @@ class RoastIntensityNotifier extends AsyncNotifier<RoastIntensity> {
 }
 
 // ---------------------------------------------------------------------------
+// AI roast engine
+// ---------------------------------------------------------------------------
+
+/// Which LLM backend generates roasts. The other one is used as a fallback.
+/// Stored by index under `ai_provider` — append new values, don't reorder.
+enum AiProvider {
+  gemma('Gemma 4', '💎', 'Google open-weight model via Gemini API'),
+  groq('Groq', '⚡', 'GPT-OSS / Qwen on Groq LPUs');
+
+  const AiProvider(this.label, this.emoji, this.description);
+
+  final String label;
+  final String emoji;
+  final String description;
+
+  static const prefsKey = 'ai_provider';
+
+  static AiProvider fromIndex(int? index) =>
+      AiProvider.values[(index ?? 0).clamp(0, AiProvider.values.length - 1)];
+}
+
+final aiProviderProvider =
+    AsyncNotifierProvider<AiProviderNotifier, AiProvider>(
+      AiProviderNotifier.new,
+    );
+
+class AiProviderNotifier extends AsyncNotifier<AiProvider> {
+  @override
+  Future<AiProvider> build() async {
+    final prefs = await ref.watch(sharedPreferencesProvider.future);
+    return AiProvider.fromIndex(prefs.getInt(AiProvider.prefsKey));
+  }
+
+  Future<void> setProvider(AiProvider provider) async {
+    state = AsyncData(provider);
+    final prefs = await ref.read(sharedPreferencesProvider.future);
+    await prefs.setInt(AiProvider.prefsKey, provider.index);
+    // Cached roasts were written by the previous engine — drop them so the
+    // overlay picks up roasts from the newly selected one.
+    final staleKeys = prefs
+        .getKeys()
+        .where((k) => k.startsWith('cached_roast_'))
+        .toList();
+    for (final key in staleKeys) {
+      await prefs.remove(key);
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Threshold minutes
 // ---------------------------------------------------------------------------
 

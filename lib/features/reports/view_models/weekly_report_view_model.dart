@@ -2,7 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../providers/usage_provider.dart';
 import '../../../providers/config_provider.dart';
 import '../../../providers/tracked_packages_provider.dart';
-import '../../../core/services/groq_service.dart';
+import '../../../core/services/roast_ai_service.dart';
 import '../../../core/services/usage_service.dart';
 
 final weeklyStatsProvider = FutureProvider<List<AppUsageStat>>((ref) async {
@@ -18,7 +18,9 @@ final weeklyRoastProvider = FutureProvider<String>((ref) async {
   final stats = await ref.watch(weeklyStatsProvider.future);
   final intensity =
       ref.watch(roastIntensityProvider).value ?? RoastIntensity.brutal;
-  return GroqService.getWeeklyRoast(stats, intensity);
+  // Re-generate when the user switches AI engine
+  await ref.watch(aiProviderProvider.future);
+  return RoastAiService.getWeeklyRoast(stats, intensity);
 });
 
 class WeeklyReportViewModel {

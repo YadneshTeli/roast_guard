@@ -3,7 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:workmanager/workmanager.dart';
 
 import '../../providers/config_provider.dart';
-import 'groq_service.dart';
+import 'roast_ai_service.dart';
 
 /// Unique task name used by both the registration and the callback dispatcher.
 const kPrefetchTaskName = 'roastPrefetchTask';
@@ -17,7 +17,7 @@ void callbackDispatcher() {
     if (taskName != kPrefetchTaskName) return true;
 
     try {
-      // Load .env so GroqService can read GROQ_API
+      // Load .env so the AI services can read GEMINI_API_KEY / GROQ_API
       await dotenv.load(fileName: '.env');
 
       final prefs = await SharedPreferences.getInstance();
@@ -33,7 +33,7 @@ void callbackDispatcher() {
       final intensityIndex = prefs.getInt('roast_intensity') ?? 1;
       final intensity = RoastIntensity.values[intensityIndex.clamp(0, 2)];
 
-      await GroqService.prefetchSingleRoast(packageName, intensity);
+      await RoastAiService.prefetchSingleRoast(packageName, intensity);
     } catch (_) {
       // Best-effort — overlay will use static fallback if this fails
     }

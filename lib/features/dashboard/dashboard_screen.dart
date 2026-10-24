@@ -10,7 +10,7 @@ import '../../providers/tracked_packages_provider.dart';
 import '../../providers/streak_provider.dart';
 import '../../core/constants/app_packages.dart';
 import '../../core/services/roast_engine.dart';
-import '../../core/services/groq_service.dart';
+import '../../core/services/roast_ai_service.dart';
 import '../../core/services/usage_service.dart';
 import 'widgets/app_usage_card.dart';
 import 'widgets/roast_intensity_slider.dart';
@@ -18,20 +18,22 @@ import 'widgets/threshold_slider.dart';
 import 'view_models/dashboard_view_model.dart';
 
 // ---------------------------------------------------------------------------
-// GROQ roast provider — cached per (packageName, totalMinutes) pair
+// AI roast provider — cached per (packageName, totalMinutes) pair
 // ---------------------------------------------------------------------------
 
-final _groqRoastProvider = FutureProvider.autoDispose
+final _aiRoastProvider = FutureProvider.autoDispose
     .family<
       String,
       ({String packageName, int totalMinutes, RoastIntensity intensity})
-    >(
-      (ref, args) => GroqService.getRoast(
+    >((ref, args) async {
+      // Re-roast when the user switches AI engine
+      await ref.watch(aiProviderProvider.future);
+      return RoastAiService.getRoast(
         args.packageName,
         Duration(minutes: args.totalMinutes),
         args.intensity,
-      ),
-    );
+      );
+    });
 
 // ---------------------------------------------------------------------------
 // Screen
@@ -406,7 +408,7 @@ class _ShameSummary extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Quick roast card — GROQ-powered
+// Quick roast card — AI-powered (Gemma 4 / Groq)
 // ---------------------------------------------------------------------------
 
 class _QuickRoastCard extends ConsumerWidget {
@@ -419,9 +421,10 @@ class _QuickRoastCard extends ConsumerWidget {
     final theme = Theme.of(context);
     final intensityAsync = ref.watch(roastIntensityProvider);
     final intensity = intensityAsync.value ?? RoastIntensity.medium;
+    final engine = ref.watch(aiProviderProvider).value ?? AiProvider.gemma;
 
     final roastAsync = ref.watch(
-      _groqRoastProvider((
+      _aiRoastProvider((
         packageName: packageName,
         totalMinutes: duration.inMinutes.clamp(1, 9999),
         intensity: intensity,
@@ -449,6 +452,14 @@ class _QuickRoastCard extends ConsumerWidget {
                   ),
                 ),
                 const Spacer(),
+                Text(
+                  '${engine.emoji} ${engine.label}',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(width: 8),
                 Text(app.emoji, style: const TextStyle(fontSize: 16)),
               ],
             ),

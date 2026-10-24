@@ -175,6 +175,67 @@ class SettingsScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 16),
 
+          // AI Roast Engine Setting
+          _SettingsSection(
+            title: '🧠 AI Roast Engine',
+            subtitle: 'Choose which open-weight LLM powers your roasts',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SegmentedButton<AiProvider>(
+                  segments: AiProvider.values
+                      .map(
+                        (p) => ButtonSegment<AiProvider>(
+                          value: p,
+                          label: Text(
+                            '${p.emoji} ${p.label}',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      )
+                      .toList(),
+                  selected: {ref.watch(aiProviderProvider).value ?? AiProvider.gemma},
+                  onSelectionChanged: (selected) {
+                    if (selected.isNotEmpty) {
+                      vm.setAiProvider(selected.first);
+                    }
+                  },
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surface.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: theme.colorScheme.outline.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.info_outline_rounded,
+                        size: 18,
+                        color: theme.colorScheme.primary,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          (ref.watch(aiProviderProvider).value ?? AiProvider.gemma)
+                              .description,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
           // About — dynamic version via package_info_plus
           _AboutSection(),
           const SizedBox(height: 32),

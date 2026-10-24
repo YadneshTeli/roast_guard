@@ -14,6 +14,9 @@ class SettingsViewModel {
     await prefs.setInt('custom_threshold_${packageName}_minutes', minutes);
     _ref.invalidate(customThresholdProvider(packageName));
   }
+
+  Future<void> setAiProvider(AiProvider provider) =>
+      _ref.read(aiProviderProvider.notifier).setProvider(provider);
 }
 
 final settingsViewModelProvider = Provider<SettingsViewModel>((ref) {
