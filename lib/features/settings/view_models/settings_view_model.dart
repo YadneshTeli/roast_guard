@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/services/roast_ai_service.dart';
 import '../../../providers/config_provider.dart';
@@ -21,7 +22,11 @@ class SettingsViewModel {
   Future<void> setAiProvider(AiProvider provider) async {
     await _ref.read(aiProviderProvider.notifier).setProvider(provider);
     final intensity = await _ref.read(roastIntensityProvider.future);
-    unawaited(RoastAiService.prefetchRoasts(intensity));
+    unawaited(
+      RoastAiService.prefetchRoasts(intensity).catchError((e, stack) {
+        debugPrint('Error prefetching roasts after provider change: $e\n$stack');
+      }),
+    );
   }
 }
 

@@ -137,19 +137,23 @@ class RoastAiService {
   /// SharedPreferences under the key `cached_roast_{packageName}`.
   /// Called at app startup so OverlayService can show roasts instantly.
   static Future<void> prefetchRoasts(RoastIntensity intensity) async {
-    if (!_anyConfigured) return;
+    try {
+      if (!_anyConfigured) return;
 
-    final prefs = await _getPrefs();
-    final tracked =
-        prefs.getStringList('tracked_packages') ??
-        AppPackages.targets.keys.toList();
+      final prefs = await _getPrefs();
+      final tracked =
+          prefs.getStringList('tracked_packages') ??
+          AppPackages.targets.keys.toList();
 
-    for (final packageName in tracked) {
-      // Skip if a cached roast is already waiting (not yet consumed)
-      final existing = prefs.getString('cached_roast_$packageName');
-      if (existing != null && existing.isNotEmpty) continue;
+      for (final packageName in tracked) {
+        // Skip if a cached roast is already waiting (not yet consumed)
+        final existing = prefs.getString('cached_roast_$packageName');
+        if (existing != null && existing.isNotEmpty) continue;
 
-      await prefetchSingleRoast(packageName, intensity);
+        await prefetchSingleRoast(packageName, intensity);
+      }
+    } catch (_) {
+      // Best-effort prefetch — overlay uses static fallback on error
     }
   }
 
