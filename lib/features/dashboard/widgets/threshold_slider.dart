@@ -47,10 +47,10 @@ class ThresholdSlider extends ConsumerWidget {
             ),
             const SizedBox(height: 16),
             Slider(
-              value: threshold.toDouble(),
+              value: threshold.toDouble().clamp(1.0, 120.0),
               min: 1,
-              max: 60,
-              divisions: 59,
+              max: 120,
+              divisions: 119,
               onChanged: (value) {
                 vm.setThreshold(value.toInt());
               },

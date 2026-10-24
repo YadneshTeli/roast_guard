@@ -49,16 +49,6 @@ void main() async {
   final prefs = await SharedPreferences.getInstance();
   final onboarded = prefs.getBool('onboarding_complete') ?? false;
 
-  // Persist API keys for background access
-  final groqKey = dotenv.env['GROQ_API'] ?? '';
-  if (groqKey.isNotEmpty) {
-    await prefs.setString('groq_api_key', groqKey);
-  }
-  final geminiKey = dotenv.env['GEMINI_API_KEY'] ?? '';
-  if (geminiKey.isNotEmpty) {
-    await prefs.setString('gemini_api_key', geminiKey);
-  }
-
   // Initialise WorkManager for background roast prefetch tasks
   await Workmanager().initialize(callbackDispatcher);
 
