@@ -57,7 +57,13 @@ class OverlayService : Service() {
             // Read the pre-fetched AI roast cached by the Flutter side at startup.
             val flutterPrefs = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
             val cacheKey = "flutter.cached_roast_$packageName"
-            val cachedRoast = flutterPrefs.getString(cacheKey, null)
+            var cachedRoast = flutterPrefs.getString(cacheKey, null)
+
+            // Discard any raw reasoning / thinking scratchpad leaks
+            if (cachedRoast != null && (cachedRoast.contains("<think>") || cachedRoast.contains("Thinking Process"))) {
+                flutterPrefs.edit().remove(cacheKey).apply()
+                cachedRoast = null
+            }
 
             roastText?.text = if (!cachedRoast.isNullOrBlank()) {
                 // Consume the cached roast so the next overlay gets a fresh one

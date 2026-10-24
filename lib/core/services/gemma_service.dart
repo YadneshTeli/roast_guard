@@ -75,6 +75,9 @@ class GemmaService {
             'generationConfig': {
               'temperature': temperature,
               'maxOutputTokens': maxTokens,
+              'thinkingConfig': {
+                'thinkingBudget': 0, // Disable thinking process so it responds immediately with roast only
+              },
             },
           },
         );
@@ -89,7 +92,7 @@ class GemmaService {
     return null;
   }
 
-  /// Joins the non-thought text parts of the first candidate.
+  /// Joins the non-thought text parts of the first candidate and strips any thinking tags.
   static String? _extractText(Map<String, dynamic>? data) {
     final candidates = data?['candidates'] as List?;
     if (candidates == null || candidates.isEmpty) return null;
@@ -97,13 +100,27 @@ class GemmaService {
     final parts = candidates.first?['content']?['parts'] as List?;
     if (parts == null) return null;
 
-    final text = parts
+    var text = parts
         .whereType<Map>()
         .where((p) => p['thought'] != true) // skip thinking-mode parts
         .map((p) => p['text'])
         .whereType<String>()
         .join()
         .trim();
+
+    if (text.isEmpty) return null;
+
+    // Strip any closed <think>...</think>
+    text = text
+        .replaceAll(RegExp(r'<think>[\s\S]*?</think>', caseSensitive: false), '')
+        .trim();
+
+    // If unclosed <think> remains, remove thought section or drop if no clean roast left
+    if (text.contains(RegExp(r'<think>', caseSensitive: false))) {
+      text = text
+          .replaceAll(RegExp(r'<think>[\s\S]*', caseSensitive: false), '')
+          .trim();
+    }
 
     return text.isEmpty ? null : text;
   }

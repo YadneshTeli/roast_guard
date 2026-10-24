@@ -65,6 +65,74 @@ class RoastAiService {
   static bool get _anyConfigured =>
       GemmaService.isConfigured || GroqService.isConfigured;
 
+  /// Cleans reasoning scratchpads, thinking tokens, and formatting.
+  /// If the model only generated thinking scratchpad and no actual roast, returns null.
+  static String? cleanRoast(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return null;
+    var text = raw.trim();
+
+    // 1. Remove closed <think>...</think> blocks
+    text = text
+        .replaceAll(RegExp(r'<think>[\s\S]*?</think>', caseSensitive: false), '')
+        .trim();
+
+    // 2. If unclosed <think> tag exists, attempt to extract any content after the thinking block
+    if (text.contains(RegExp(r'<think>', caseSensitive: false))) {
+      final lines = text.split('\n');
+      final nonThinkingLines = <String>[];
+      bool insideThinking = false;
+
+      for (final line in lines) {
+        final trimmed = line.trim();
+        if (trimmed.toLowerCase().contains('<think>') ||
+            trimmed.toLowerCase().startsWith('thinking process')) {
+          insideThinking = true;
+          continue;
+        }
+        if (trimmed.toLowerCase().contains('</think>')) {
+          insideThinking = false;
+          continue;
+        }
+        if (insideThinking) {
+          // Skip reasoning bullet points / analysis headers while inside thinking
+          if (trimmed.startsWith('*') ||
+              trimmed.startsWith('-') ||
+              RegExp(r'^\d+\.').hasMatch(trimmed) ||
+              trimmed.startsWith('**') ||
+              trimmed.toLowerCase().startsWith('persona:') ||
+              trimmed.toLowerCase().startsWith('action:') ||
+              trimmed.toLowerCase().startsWith('target:') ||
+              trimmed.toLowerCase().startsWith('constraints:')) {
+            continue;
+          }
+          // If a clean sentence appears after the bullets, that's the roast!
+          if (trimmed.isNotEmpty && trimmed.length > 5) {
+            nonThinkingLines.add(trimmed);
+            insideThinking = false;
+          }
+        } else if (trimmed.isNotEmpty) {
+          nonThinkingLines.add(trimmed);
+        }
+      }
+      text = nonThinkingLines.join(' ').trim();
+    }
+
+    // 3. Strip any remaining thinking remnants or quotes
+    text = text
+        .replaceAll(RegExp(r'</?think>', caseSensitive: false), '')
+        .replaceAll(RegExp(r'^["“”]+|["“”]+$'), '')
+        .trim();
+
+    // 4. If text still contains obvious reasoning indicators or is empty, reject
+    if (text.isEmpty ||
+        text.toLowerCase().contains('thinking process') ||
+        text.toLowerCase().contains('analyze the request')) {
+      return null;
+    }
+
+    return text;
+  }
+
   /// Selected provider first, the other as fallback. Returns `null` only if
   /// both fail or neither has an API key.
   static Future<String?> _complete({
@@ -80,13 +148,12 @@ class RoastAiService {
         : [AiProvider.groq, AiProvider.gemma];
 
     for (final provider in order) {
-      final result = switch (provider) {
+      final rawResult = switch (provider) {
         AiProvider.gemma => await GemmaService.complete(
           system: system,
           user: user,
           temperature: temperature,
-          // Gemma tends to be wordier — give it a little headroom
-          maxTokens: maxTokens + 40,
+          maxTokens: maxTokens,
         ),
         AiProvider.groq => await GroqService.complete(
           system: system,
@@ -96,7 +163,9 @@ class RoastAiService {
           weekly: weekly,
         ),
       };
-      if (result != null && result.isNotEmpty) return result;
+
+      final cleaned = cleanRoast(rawResult);
+      if (cleaned != null && cleaned.isNotEmpty) return cleaned;
     }
     return null;
   }
@@ -123,7 +192,7 @@ class RoastAiService {
             '${_timeOfDayContext()} '
             'Make it sting but keep it funny. Two sentences max.',
         temperature: 0.9,
-        maxTokens: 120,
+        maxTokens: 250,
       );
       if (content != null) return content;
     } catch (_) {
@@ -146,9 +215,13 @@ class RoastAiService {
           AppPackages.targets.keys.toList();
 
       for (final packageName in tracked) {
-        // Skip if a cached roast is already waiting (not yet consumed)
+        // Skip if a clean cached roast is already waiting (not yet consumed)
         final existing = prefs.getString('cached_roast_$packageName');
-        if (existing != null && existing.isNotEmpty) continue;
+        if (existing != null &&
+            existing.isNotEmpty &&
+            !existing.contains('<think>')) {
+          continue;
+        }
 
         await prefetchSingleRoast(packageName, intensity);
       }
@@ -177,10 +250,10 @@ class RoastAiService {
             'Write ONE brutal roast (2 sentences max) for someone '
             'who spends too much time on $appName. Be sharp, witty, specific.',
         temperature: 0.95,
-        maxTokens: 120,
+        maxTokens: 250,
       );
 
-      if (content != null) {
+      if (content != null && content.isNotEmpty) {
         final prefs = await _getPrefs();
         await prefs.setString('cached_roast_$packageName', content);
       }
@@ -216,7 +289,7 @@ class RoastAiService {
             'usage. Be specific about the apps and times. No emojis. No hashtags.',
         user: 'Here is my weekly screen time: $usageSummary',
         temperature: 0.8,
-        maxTokens: 250,
+        maxTokens: 350,
         weekly: true,
       );
       if (content != null) return content;
@@ -264,7 +337,9 @@ class RoastAiService {
     const base =
         'You are a brutally honest but funny productivity coach who roasts people '
         'for wasting time on social media. Your roasts are sharp, specific, and '
-        'under 2 sentences. No emojis. No hashtags. Reply with the roast only. ';
+        'under 2 sentences. No emojis. No hashtags. Reply with the roast only. '
+        'CRITICAL: Output ONLY the final roast text. Do NOT output <think> tags, '
+        'thinking process, reasoning, planning, bullet points, or markdown formatting. ';
 
     switch (intensity) {
       case RoastIntensity.gentle:
