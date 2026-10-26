@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RoastGuard v2.2.0 — The Open-Weight AI That Roasts You For Doomscrolling</title>
+  <meta name="description" content="Automate your digital self-discipline with Google Gemma 4. When you're too lazy to stop scrolling, RoastGuard intercepts your screen with savage context-aware roasts.">
+  <meta name="keywords" content="RoastGuard, Doom Roast, Google Gemma 4, Open-Weight AI, Digital Wellbeing, Screen Time, Anti Doomscrolling, Flutter, Android Overlay">
+  
+  <!-- OpenGraph -->
+  <meta property="og:title" content="RoastGuard v2.2.0 — Open-Weight AI Anti-Doomscrolling Shield">
+  <meta property="og:description" content="Automating self-discipline with Google Gemma 4 when you're too lazy to stop doomscrolling.">
+  <meta property="og:image" content="assets/images/roastguard_cover_banner.jpg">
+  <meta property="og:type" content="website">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23F59E0B'><path d='M12 2c1.1 0 2 .9 2 2 0 .74-.4 1.38-1 1.72v1.43c2.72.63 4.8 2.84 5.37 5.67.14.71-.34 1.38-1.05 1.52-.71.14-1.38-.34-1.52-1.05-.41-2.02-1.89-3.6-3.8-4.05v11.76c.6-.34 1-.98 1-1.72 0-1.1-.9-2-2-2s-2 .9-2 2c0 .74.4 1.38 1 1.72V7.29C8.09 7.74 6.61 9.32 6.2 11.34c-.14.71-.81 1.19-1.52 1.05-.71-.14-1.19-.81-1.05-1.52.57-2.83 2.65-5.04 5.37-5.67V5.72C8.4 5.38 8 4.74 8 4c0-1.1.9-2 2-2h2z'/></svg>">
+
+  <link rel="stylesheet" href="index.css">
+</head>
+<body>
+
+  <!-- Floating Navigation Bar -->
+  <div class="navbar-wrapper">
+    <nav class="navbar" aria-label="Main Navigation">
+      <a href="#" class="nav-brand" aria-label="RoastGuard Home">
+        <svg class="nav-logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>
+        </svg>
+        <span>RoastGuard</span>
+        <span class="version-badge">v2.2.0</span>
+      </a>
+
+      <ul class="nav-links">
+        <li><a href="#simulator" class="nav-link">Live Simulator</a></li>
+        <li><a href="#features" class="nav-link">Features</a></li>
+        <li><a href="#architecture" class="nav-link">Architecture</a></li>
+        <li><a href="#metrics" class="nav-link">The Payoff</a></li>
+      </ul>
+
+      <div class="nav-actions">
+        <a href="https://github.com/YadneshTeli/roast_guard/releases/download/v2.2.0/app-release.apk" class="btn-apk-nav" download>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          <span>Get APK</span>
+        </a>
+      </div>
+    </nav>
+  </div>
+
+  <!-- Hero Section -->
+  <header class="hero-section">
+    <div class="container hero-content">
+      <div class="hero-pill">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="16" x2="12" y2="12"/>
+          <line x1="12" y1="8" x2="12.01" y2="8"/>
+        </svg>
+        <span>Built for International Sloth Day & Open-Source AI</span>
+      </div>
+
+      <h1 class="hero-title">
+        The Open-Weight AI That <br>
+        <span class="gradient-text">Roasts You For Doomscrolling.</span>
+      </h1>
+
+      <p class="hero-subtitle">
+        When you're too exhausted and lazy to discipline yourself, RoastGuard monitors your screen time in the background and unleashes savage, context-aware <strong>Google Gemma 4</strong> roasts the second you overstay your welcome.
+      </p>
+
+      <div class="hero-buttons">
+        <a href="https://github.com/YadneshTeli/roast_guard/releases/download/v2.2.0/app-release.apk" class="btn-primary" download>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          <span>Download v2.2.0 APK (Free)</span>
+        </a>
+
+        <a href="https://github.com/YadneshTeli/roast_guard" target="_blank" rel="noopener noreferrer" class="btn-secondary">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/>
+          </svg>
+          <span>View on GitHub</span>
+        </a>
+
+        <a href="https://dev.to/yadneshteli/roastguard-v220-automating-self-discipline-with-google-gemma-4-when-youre-too-lazy-to-stop-7b2" target="_blank" rel="noopener noreferrer" class="btn-secondary">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+          </svg>
+          <span>DEV Challenge Post</span>
+        </a>
+      </div>
+
+      <!-- Hero Visual Banner Card -->
+      <div class="hero-card-container">
+        <div class="hero-card-inner">
+          <img src="assets/images/roastguard_cover_banner.jpg" alt="RoastGuard with Google Gemma 4 and Cybernetic Sloth Mascot" class="hero-banner-img" width="1040" height="437">
+          <div class="hero-card-status-bar">
+            <div class="status-indicator">
+              <span class="pulse-dot"></span>
+              <span>Gemma 4 Open-Weights Engine Active</span>
+            </div>
+            <div class="status-indicator">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              </svg>
+              <span>4-Tier Reasoning Leak Sanitizer Enabled</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Live Interactive Simulator Section -->
+  <section id="simulator" class="section">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">Interactive Playground</span>
+        <h2 class="section-title">Test the Roaster Right Now</h2>
+        <p class="section-desc">Experience what happens when you get caught doomscrolling. Choose your offending app, elapsed duration, and roast intensity.</p>
+      </div>
+
+      <div class="simulator-wrapper">
+        <div class="sim-controls-grid">
+          <div class="sim-control-group">
+            <label for="simApp" class="sim-label">Target Distraction App</label>
+            <select id="simApp" class="sim-select">
+              <option value="instagram">Instagram (Reels)</option>
+              <option value="tiktok">TikTok (Infinite Scroll)</option>
+              <option value="youtube">YouTube (Shorts)</option>
+              <option value="reddit">Reddit (Comment Threads)</option>
+              <option value="twitter">Twitter / X (Rage-Bait)</option>
+            </select>
+          </div>
+
+          <div class="sim-control-group">
+            <div class="sim-label">
+              <span>Distraction Time</span>
+              <span id="simThresholdVal" style="color: var(--accent-violet-light); font-family: var(--font-mono);">45 min</span>
+            </div>
+            <input type="range" id="simThreshold" class="sim-slider" min="1" max="120" value="45">
+          </div>
+
+          <div class="sim-control-group">
+            <label class="sim-label">Roast Intensity</label>
+            <div class="sim-intensity-buttons">
+              <button type="button" class="btn-intensity" data-level="mild">Mild</button>
+              <button type="button" class="btn-intensity active" data-level="savage">Savage</button>
+              <button type="button" class="btn-intensity" data-level="nuclear">Nuclear</button>
+            </div>
+          </div>
+        </div>
+
+        <button type="button" id="triggerRoastBtn" class="btn-trigger-roast">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+          </svg>
+          <span>Generate Gemma 4 Roast</span>
+        </button>
+
+        <div class="sim-preview-box">
+          <div class="sim-preview-header">
+            <div class="sim-badge-sanitized">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+              <span>Chain-of-Thought Sanitized</span>
+            </div>
+            <button type="button" id="soundToggle" style="color: var(--text-muted); cursor: pointer;" title="Toggle Alert Sound" aria-label="Toggle Sound">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+                <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/>
+              </svg>
+            </button>
+          </div>
+          <p id="simRoastOutput" class="sim-roast-text">Generating response...</p>
+          <div class="sim-overlay-actions">
+            <button type="button" class="sim-btn-overlay sim-btn-close">Close App Now</button>
+            <button type="button" class="sim-btn-overlay sim-btn-dismiss">Give Me 5 Mins</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Bento Grid Core Features -->
+  <section id="features" class="section">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">Modular Architecture</span>
+        <h2 class="section-title">Built Different from Other Wellbeing Apps</h2>
+        <p class="section-desc">Traditional screen-time apps demand active effort and sell your data. RoastGuard takes over the cognitive load entirely.</p>
+      </div>
+
+      <div class="bento-grid">
+        <!-- Card 1: Full-screen Overlay Interception (Span 8) -->
+        <div class="bento-card bento-col-8">
+          <div>
+            <div class="bento-icon-box amber">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="5" y="2" width="14" height="20" rx="2" ry="2"/>
+                <line x1="12" y1="18" x2="12.01" y2="18"/>
+              </svg>
+            </div>
+            <h3 class="bento-card-title">Native Floating Overlay Interception</h3>
+            <p class="bento-card-desc">
+              Runs as a background foreground service using Android's native <code>SYSTEM_ALERT_WINDOW</code>. When your time limit is crossed, it renders directly over the offending app with a compulsory reality check.
+            </p>
+          </div>
+          <div class="bento-img-frame">
+            <img src="assets/images/roast_overlay_demo.jpg" alt="RoastGuard Floating Overlay Intercepting TikTok" loading="lazy">
+          </div>
+        </div>
+
+        <!-- Card 2: Google Gemma 4 Open Weights (Span 4) -->
+        <div class="bento-card bento-col-4">
+          <div>
+            <div class="bento-icon-box">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="12 2 2 7 12 12 22 7 12 2"/>
+                <polyline points="2 17 12 22 22 17"/>
+                <polyline points="2 12 12 17 22 12"/>
+              </svg>
+            </div>
+            <h3 class="bento-card-title">Google Gemma 4 Core</h3>
+            <p class="bento-card-desc">
+              Trained on open weights for creative reasoning. No corporate sanitization or polite platitudes—Gemma 4 delivers authentic, biting comedic roasts calibrated to your exact habits.
+            </p>
+          </div>
+          <div class="code-preview">
+            <code>gemma-4-26b-a4b-it<br>• Temperature: 0.85<br>• Brevity Enforced: &lt; 25w<br>• Zero Cloud Tolls</code>
+          </div>
+        </div>
+
+        <!-- Card 3: 4-Layer Reasoning Token Sanitizer (Span 4) -->
+        <div class="bento-card bento-col-4">
+          <div>
+            <div class="bento-icon-box emerald">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              </svg>
+            </div>
+            <h3 class="bento-card-title">Reasoning Token Shield</h3>
+            <p class="bento-card-desc">
+              Open reasoning models frequently leak internal <code>&lt;think&gt;...&lt;/think&gt;</code> loops. Our 4-tier pipeline scrubs raw thoughts at stream, regex, and native Kotlin levels.
+            </p>
+          </div>
+          <div class="code-preview">
+            <code>input.replaceAll(<br>&nbsp;&nbsp;RegExp(r'&lt;think&gt;[\s\S]*?&lt;/think&gt;'),<br>&nbsp;&nbsp;''<br>).trim()</code>
+          </div>
+        </div>
+
+        <!-- Card 4: Background Prefetch Engine (Span 4) -->
+        <div class="bento-card bento-col-4">
+          <div>
+            <div class="bento-icon-box">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+              </svg>
+            </div>
+            <h3 class="bento-card-title">0ms Instant Dispatch</h3>
+            <p class="bento-card-desc">
+              Waiting 3 seconds for an LLM when an overlay pops up ruins the psychological effect. Riverpod background workers pre-generate roasts into an LRU cache ahead of time.
+            </p>
+          </div>
+          <div class="code-preview">
+            <code>unawaited(RoastAiService<br>&nbsp;&nbsp;.prefetchRoasts(intensity));<br>// Instant local delivery</code>
+          </div>
+        </div>
+
+        <!-- Card 5: 1 to 120-Minute Granular Control (Span 4) -->
+        <div class="bento-card bento-col-4">
+          <div>
+            <div class="bento-icon-box amber">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12 6 12 12 16 14"/>
+              </svg>
+            </div>
+            <h3 class="bento-card-title">Granular App Sliders</h3>
+            <p class="bento-card-desc">
+              Synced slider boundaries from 1 to 120 minutes with zero assertion clipping. Configure strict 5-minute caps for TikTok while allowing 45 minutes for Reddit.
+            </p>
+          </div>
+          <div class="code-preview">
+            <code>slider.clamp(1.0, 120.0)<br>// Fully aligned bounds<br>// Settings + Dashboard sync</code>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Architecture Deep Dive Section -->
+  <section id="architecture" class="section" style="background: rgba(11, 15, 25, 0.5);">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">Engineering</span>
+        <h2 class="section-title">End-to-End Pipeline Architecture</h2>
+        <p class="section-desc">From native usage polling to model inference, token scrubbing, and immediate UI overlay presentation.</p>
+      </div>
+
+      <div class="arch-layout">
+        <div class="arch-visual-container">
+          <img src="assets/images/gemma_pipeline_visual.jpg" alt="Google Gemma 4 AI Reasoning and Sanitizer Pipeline Infographic" loading="lazy">
+        </div>
+
+        <div class="arch-steps-list">
+          <div class="arch-step-item">
+            <div class="arch-step-number">1</div>
+            <div class="arch-step-content">
+              <h4>Android UsageStats Poller</h4>
+              <p>Monitors package foreground events via native Kotlin service every 15 seconds without draining battery.</p>
+            </div>
+          </div>
+
+          <div class="arch-step-item">
+            <div class="arch-step-number">2</div>
+            <div class="arch-step-content">
+              <h4>Dual-Engine Routing</h4>
+              <p>Routes requests to Google Gemma 4 open weights as primary, falling back to ultra-low-latency Groq Llama 3 when offline.</p>
+            </div>
+          </div>
+
+          <div class="arch-step-item">
+            <div class="arch-step-number">3</div>
+            <div class="arch-step-content">
+              <h4>Stream & Regex Scrubbing</h4>
+              <p>Strips <code>&lt;think&gt;</code> blocks in memory before strings are written to SharedPreferences or dispatched to the UI.</p>
+            </div>
+          </div>
+
+          <div class="arch-step-item">
+            <div class="arch-step-number">4</div>
+            <div class="arch-step-content">
+              <h4>System Alert Overlay</h4>
+              <p>Floats over third-party apps, locking touch focus until the user either closes the app or acknowledges the shame timer.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Quantifiable Metrics Section -->
+  <section id="metrics" class="section">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">The Lazy Payoff</span>
+        <h2 class="section-title">Zero Willpower. Hours Saved.</h2>
+        <p class="section-desc">Why exert mental energy trying to fight dopamine loops when open-weight AI can automate it for you?</p>
+      </div>
+
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-value">1.5 - 2.5h</div>
+          <div class="metric-label">Daily Screen Time Reclaimed</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value">0%</div>
+          <div class="metric-label">Willpower Exertion Required</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value">0ms</div>
+          <div class="metric-label">Cached Overlay Latency</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value">$0.00</div>
+          <div class="metric-label">No Subscriptions or Paywalls</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Download & Action Banner Section -->
+  <section class="section" style="padding-top: 20px;">
+    <div class="container">
+      <div class="cta-banner">
+        <h2 class="cta-title">Stop Doomscrolling. Start Sleeping.</h2>
+        <p class="cta-desc">
+          Download the latest RoastGuard release APK directly to your Android device, or inspect the open-source codebase on GitHub.
+        </p>
+
+        <div class="cta-btn-group">
+          <a href="https://github.com/YadneshTeli/roast_guard/releases/download/v2.2.0/app-release.apk" class="btn-primary" download>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            <span>Download APK (v2.2.0)</span>
+          </a>
+
+          <a href="https://github.com/YadneshTeli/roast_guard" target="_blank" rel="noopener noreferrer" class="btn-secondary">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/>
+            </svg>
+            <span>GitHub Repository</span>
+          </a>
+
+          <a href="https://dev.to/yadneshteli/roastguard-v220-automating-self-discipline-with-google-gemma-4-when-youre-too-lazy-to-stop-7b2" target="_blank" rel="noopener noreferrer" class="btn-secondary">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+            </svg>
+            <span>Read on DEV.to</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-top">
+        <div class="footer-brand">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent-amber)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>
+          </svg>
+          <span>RoastGuard</span>
+        </div>
+
+        <div class="footer-links">
+          <a href="https://github.com/YadneshTeli/roast_guard" class="footer-link" target="_blank" rel="noopener noreferrer">GitHub</a>
+          <a href="https://github.com/YadneshTeli/roast_guard/releases/tag/v2.2.0" class="footer-link" target="_blank" rel="noopener noreferrer">Releases</a>
+          <a href="https://dev.to/yadneshteli/roastguard-v220-automating-self-discipline-with-google-gemma-4-when-youre-too-lazy-to-stop-7b2" class="footer-link" target="_blank" rel="noopener noreferrer">DEV Post</a>
+          <a href="https://github.com/YadneshTeli/roast_guard/blob/main/LICENSE" class="footer-link" target="_blank" rel="noopener noreferrer">MIT License</a>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <p>&copy; 2026 RoastGuard. Open Source under the MIT License. Built with Google Gemma 4 and DevRelay.</p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
