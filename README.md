@@ -111,6 +111,9 @@ roast_guard/
 git clone https://github.com/YadneshTeli/roast_guard.git
 cd roast_guard
 
+# Create your local environment file (add GEMINI_API_KEY / GROQ_API if using AI roasts)
+cp .env.example .env
+
 # Install dependencies
 flutter pub get
 
@@ -149,9 +152,20 @@ flutter run
 
 ---
 
+## 🤝 Contributing & Community
+
+Contributions are welcome! Please review the project guidelines before submitting an issue or pull request:
+
+- [Contributing Guide](CONTRIBUTING.md)
+- [Code of Conduct](CODE_OF_CONDUCT.md)
+- [Security Policy](SECURITY.md)
+- [Privacy Policy](PRIVACY.md)
+
+---
+
 ## 📄 License
 
-This project is licensed under the MIT License.
+This project is licensed under the [MIT License](LICENSE).
 
 ---
 

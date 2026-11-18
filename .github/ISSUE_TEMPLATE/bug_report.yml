@@ -1,0 +1,88 @@
+name: Bug Report
+description: Report a bug in RoastGuard (Doom Roast)
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting an issue! Please fill out the details below so we can reproduce and fix it quickly.
+        **Important:** Never include `.env` files, API keys, or `Authorization` headers in logs or screenshots.
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component Affected
+      options:
+        - Foreground Monitoring / Usage Tracking
+        - Roast Overlay (SYSTEM_ALERT_WINDOW)
+        - AI Engine (Gemma 4 / Groq / Static Fallback)
+        - Dashboard / Material 3 UI
+        - Settings / App Picker
+        - Weekly Report / Sharing
+        - Build / CI / Setup
+        - Landing Page (website/)
+    validations:
+      required: true
+
+  - type: input
+    id: app_version
+    attributes:
+      label: App Version
+      description: Found in Settings → About RoastGuard or pubspec.yaml
+      placeholder: "e.g. 2.2.0"
+    validations:
+      required: true
+
+  - type: input
+    id: device_os
+    attributes:
+      label: Android Version & Device / Emulator
+      placeholder: "e.g. Android 14 (API 34), Pixel 7 / Emulator"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: ai_engine
+    attributes:
+      label: Active AI Engine
+      options:
+        - Gemma 4 (Gemini API)
+        - Groq
+        - Offline / Static Fallback (no API key)
+        - Not Applicable
+    validations:
+      required: false
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the Bug
+      description: Clear and concise summary of what went wrong.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      placeholder: |
+        1. Enable Active Monitoring...
+        2. Open tracked app...
+        3. Wait 15+ seconds...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected vs Actual Behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant Logs (Optional)
+      description: Paste `flutter logs` or `adb logcat -s RoastGuardMonitor OverlayService` output (redact any keys!).
+      render: shell

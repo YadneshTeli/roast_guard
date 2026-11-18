@@ -1,0 +1,40 @@
+name: Feature Request
+description: Suggest a new feature, roast pack, or improvement for RoastGuard
+title: "[Feat]: "
+labels: ["enhancement"]
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: Feature Area
+      options:
+        - Usage Tracking & Monitoring
+        - Overlay Behavior & UI
+        - AI Roast Engine / Prompts
+        - Dashboard / Reports / Streaks
+        - Settings & Customization
+        - Landing Page / Docs
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or Motivation
+      description: What problem does this solve or what experience would it improve?
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: Describe how you envision this working.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered (Optional)
+      description: Any alternative approaches or workarounds you considered.
